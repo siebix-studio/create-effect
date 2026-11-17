@@ -33,10 +33,15 @@
         // Effect diagnostics are reported by Oxlint; keep the LSP for refactors,
         // quickinfo and completions so they don't show up twice.
         "diagnostics": false,
-        // The CLI module, the Bun platform and the test helpers are marked unstable; we build on
-        // them knowingly.
+        // The CLI, file system, path and process modules, the Bun platform and the test helpers are
+        // marked unstable; we build on them knowingly.
         "allowedUnstableApis": [
           "effect/cli",
+          "effect/FileSystem",
+          "effect/Path",
+          "effect/PlatformError",
+          "effect/process",
+          "effect/Terminal",
           "effect/testing",
           "@effect/platform-bun",
           "@effect/vitest"

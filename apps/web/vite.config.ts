@@ -2,6 +2,8 @@ import { foldkit } from "@foldkit/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
+import { seoFiles } from "./plugins/seo-files.ts";
+
 export default defineConfig({
   plugins: [
     tailwindcss(),
@@ -13,6 +15,7 @@ export default defineConfig({
         build: { prerender: true },
       },
     }),
+    seoFiles(),
   ],
   optimizeDeps: {
     entries: ["src/entry.ts"],

@@ -6,11 +6,32 @@ A CLI that scaffolds full-stack Effect apps on Cloudflare, deployed with [Alchem
 bunx @siebix/create-effect my-app
 ```
 
+The project it creates is a Bun workspace:
+
+| Path | What |
+| --- | --- |
+| `packages/domain` | Schemas and the HTTP contract shared by the API and the website |
+| `apps/api` | An Effect HTTP API on a Cloudflare Worker |
+| `apps/web` | A prerendered Foldkit website that calls the API through a typed client |
+| `alchemy.run.ts` | The stack that deploys both |
+
+Run without arguments, it asks for the project name, whether to install dependencies and whether to initialize git. Each question has a flag, and a flag skips its question:
+
+| Flag | What |
+| --- | --- |
+| `--install`, `--no-install` | Run `bun install`, or don't |
+| `--git`, `--no-git` | Create a git repository with a first commit, or don't |
+| `--force` | Write into a directory that is not empty without asking |
+| `--yes`, `-y` | Ask nothing and take every default; a missing name becomes `my-app` |
+
+Where nothing can be asked (CI, a pipe) the defaults apply, and the name has to be given.
+
 ## Layout
 
 | Path | What |
 | --- | --- |
 | `apps/cli` | The CLI (`@siebix/create-effect`, binary `create-effect`), built with `effect/cli` |
+| `apps/cli/template` | The project the CLI creates, copied as is with the project name filled in |
 | `apps/web` | The website at [effect.siebix.com](https://effect.siebix.com), a prerendered Foldkit app |
 | `alchemy.run.ts` | The deploy stack for the website |
 | `stacks/github.ts` | CI credentials (Cloudflare API token and account ID as GitHub secrets) |
@@ -21,7 +42,7 @@ bunx @siebix/create-effect my-app
 bun install
 bun run check       # lint and format (ultracite)
 bun run typecheck   # stack files, then every app
-bun run test        # CLI tests and Foldkit scene tests
+bun run test        # CLI tests (one creates a project and runs its checks) and Foldkit scene tests
 bun run cli -- my-app
 bun run dev         # the website under alchemy dev
 ```
@@ -62,3 +83,7 @@ The workflow reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from the r
 ```sh
 bun alchemy deploy --config stacks/github.ts --stage prod --profile admin
 ```
+
+## License
+
+[MIT](LICENSE)

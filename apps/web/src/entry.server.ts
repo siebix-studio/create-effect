@@ -1,33 +1,32 @@
+import geistMonoLatin from "@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url";
+import geistPixelLatin from "@fontsource-variable/geist-pixel/files/geist-pixel-latin-elsh-normal.woff2?url";
+import geistLatin from "@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url";
 import { Array, Effect, Option } from "effect";
 import { Server } from "foldkit/experimental";
 import * as Url from "foldkit/url";
 
 import { init, view } from "./main";
 import { urlToAppRoute } from "./route";
-import { SITE_DESCRIPTION, SITE_NAME } from "./site";
+import * as Seo from "./seo";
 
 export { prerenderPaths } from "./route";
 
 const ALLOWED_METHODS: ReadonlyArray<string> = ["GET", "HEAD"];
 
-const metaTag = (
-  attribute: "name" | "property",
-  key: string,
-  content: string
-): string => `<meta ${attribute}="${key}" content="${content}">`;
+// NOTE: Without these the browser finds the fonts only after parsing the stylesheet, paints the
+// text in a fallback and then swaps it.
+const fontPreload = (href: string): string =>
+  `<link rel="preload" href="${href}" as="font" type="font/woff2" crossorigin>`;
 
-const HEAD = Array.join(
-  [
-    metaTag("name", "description", SITE_DESCRIPTION),
-    metaTag("property", "og:type", "website"),
-    metaTag("property", "og:site_name", SITE_NAME),
-    metaTag("property", "og:description", SITE_DESCRIPTION),
-  ],
+const FONT_PRELOADS = Array.join(
+  Array.map([geistLatin, geistPixelLatin, geistMonoLatin], fontPreload),
   ""
 );
 
 export const renderDocument: Server.DocumentRenderer = (application, assets) =>
-  Server.renderDocument(application, assets, { head: HEAD });
+  Server.renderDocument(application, assets, {
+    head: `${Seo.Head.pageHead(application.title)}${Seo.Head.SITE_HEAD}${FONT_PRELOADS}`,
+  });
 
 const methodNotAllowed = (): Server.EntryResult =>
   Server.Responded(

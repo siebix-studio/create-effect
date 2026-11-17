@@ -6,7 +6,9 @@ import core from "ultracite/oxlint/core";
 export default defineConfig({
   env: core.env,
   extends: [core, antiSlop, effect],
-  ignorePatterns: core.ignorePatterns,
+  // The CLI's template is a project of its own: it is linted with its own config, inside a
+  // generated project, by apps/cli/test/e2e.test.ts.
+  ignorePatterns: [...core.ignorePatterns, "apps/cli/template/**"],
   options: { typeAware: true },
   rules: {
     // Effect code is built from anonymous generators (Effect.gen(function* () {}),
@@ -24,6 +26,9 @@ export default defineConfig({
     // Reports any callback whose first parameter is named `error`, i.e. every
     // Effect.catchTag / mapError / tapError handler.
     "promise/prefer-await-to-callbacks": "off",
+    // Misread `Effect.forEach(items, f)` as `Array#forEach` with a `thisArg`.
+    "unicorn/no-array-for-each": "off",
+    "unicorn/no-array-method-this-argument": "off",
     // Misreads `Schema.TaggedError<X>()("X", {...})` as an Error call missing `new`.
     "unicorn/throw-new-error": "off",
     // Opaque schema types: `interface X extends Schema.Schema.Type<typeof S> {}`

@@ -7,7 +7,7 @@ import * as Redacted from "effect/Redacted";
 
 import { EffectScaffoldState } from "../state";
 
-const repository = { owner: "siebix-studio", repository: "effect-scaffold" };
+const repository = { owner: "siebix-studio", repository: "create-effect" };
 
 /**
  * CI credentials as code: mints the scoped Cloudflare API token the deploy workflow uses and
