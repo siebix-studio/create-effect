@@ -19,7 +19,7 @@ export const SITE_HEAD = pipe(
     metaTag("name", "color-scheme", "light"),
     metaTag("name", "theme-color", "#ffffff"),
     metaTag("property", "og:site_name", SITE_NAME),
-    metaTag("property", "og:locale", "en_GB"),
+    metaTag("property", "og:locale", "en_US"),
     metaTag("property", "og:type", "website"),
     metaTag("name", "twitter:card", "summary_large_image"),
     '<link rel="icon" type="image/svg+xml" href="/favicon.svg">',
