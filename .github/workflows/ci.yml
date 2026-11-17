@@ -104,8 +104,6 @@ jobs:
         with:
           version-script: bun run version-packages
           publish-script: bun run release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     name: Deploy
