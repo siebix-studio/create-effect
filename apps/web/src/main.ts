@@ -7,7 +7,8 @@ import { UrlRequest, load, pushUrl } from "foldkit/navigation";
 import { modifyFields } from "foldkit/struct";
 import { Url, toString as urlToString } from "foldkit/url";
 
-import { AppRoute, homeRouter, urlToAppRoute } from "./route";
+import * as Changelog from "./changelog";
+import { AppRoute, changelogRouter, homeRouter, urlToAppRoute } from "./route";
 import {
   INSTALL_COMMAND,
   REPOSITORY_URL,
@@ -16,6 +17,12 @@ import {
   SITE_URL,
   TAGLINE,
 } from "./site";
+import {
+  CODE_BLOCK_CLASS,
+  INLINE_CODE_CLASS,
+  LINK_CLASS,
+  SECTION_HEADING_CLASS,
+} from "./ui";
 
 // MODEL
 
@@ -138,17 +145,6 @@ const ROADMAP: ReadonlyArray<string> = [
   "CI/CD with a preview for every pull request",
 ];
 
-const LINK_CLASS =
-  "underline decoration-neutral-300 underline-offset-4 transition-colors hover:text-neutral-900 hover:decoration-neutral-900";
-
-const SECTION_HEADING_CLASS = "text-2xl leading-tight sm:text-3xl";
-
-const INLINE_CODE_CLASS =
-  "rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-sm whitespace-nowrap text-neutral-800";
-
-const CODE_BLOCK_CLASS =
-  "overflow-x-auto rounded-lg bg-neutral-950 px-5 py-4 font-mono text-sm leading-relaxed text-neutral-100";
-
 const heroView = (h: HtmlBuilder<Message>): Html =>
   h.header(
     [h.Class("grid gap-6")],
@@ -162,12 +158,18 @@ const heroView = (h: HtmlBuilder<Message>): Html =>
         [`${TAGLINE}.`]
       ),
       h.pre([h.Class(CODE_BLOCK_CLASS)], [h.code([], [INSTALL_COMMAND])]),
-      h.a(
+      h.nav(
+        [h.Class("flex flex-wrap gap-x-6 gap-y-2 text-neutral-600")],
         [
-          h.Href(REPOSITORY_URL),
-          h.Class(`justify-self-start text-neutral-600 ${LINK_CLASS}`),
-        ],
-        ["View the source on GitHub"]
+          h.a(
+            [h.Href(REPOSITORY_URL), h.Class(LINK_CLASS)],
+            ["View the source on GitHub"]
+          ),
+          h.a(
+            [h.Href(changelogRouter()), h.Class(LINK_CLASS)],
+            ["Read the changelog"]
+          ),
+        ]
       ),
     ]
   );
@@ -269,6 +271,12 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
       lang: "en",
       canonical: `${SITE_URL}${homeRouter()}`,
       body: layout(h, homeView(h)),
+    }),
+    Changelog: () => ({
+      title: `Changelog | ${SITE_NAME}`,
+      lang: "en",
+      canonical: `${SITE_URL}${changelogRouter()}`,
+      body: layout(h, Changelog.view(h)),
     }),
     NotFound: ({ path }) => ({
       title: `Page not found | ${SITE_NAME}`,
