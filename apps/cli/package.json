@@ -1,8 +1,32 @@
 {
   "name": "@siebix/create-effect",
   "version": "0.1.0",
-  "description": "Scaffold full-stack Effect apps on Cloudflare, deployed with Alchemy.",
+  "description": "Create a full-stack Effect app on Cloudflare with one command: an Effect HTTP API, a Foldkit website and the typed contract they share, deployed with Alchemy.",
+  "keywords": [
+    "alchemy",
+    "bun",
+    "cli",
+    "cloudflare",
+    "cloudflare-workers",
+    "create",
+    "effect",
+    "effect-ts",
+    "foldkit",
+    "full-stack",
+    "scaffold",
+    "starter",
+    "template",
+    "typescript"
+  ],
+  "homepage": "https://effect.siebix.com",
+  "bugs": {
+    "url": "https://github.com/siebix-studio/create-effect/issues"
+  },
   "license": "MIT",
+  "author": {
+    "name": "Siebix",
+    "url": "https://siebix.com"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/siebix-studio/create-effect.git",
