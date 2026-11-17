@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    // Foldkit's own projects compile with this on.
+    "exactOptionalPropertyTypes": true
+  },
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+}

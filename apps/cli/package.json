@@ -1,0 +1,34 @@
+{
+  "name": "@siebix/create-effect",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Scaffold full-stack Effect apps on Cloudflare, deployed with Alchemy.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/siebix-studio/effect-scaffold.git",
+    "directory": "apps/cli"
+  },
+  "bin": {
+    "create-effect": "./src/bin.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "start": "bun run src/bin.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@effect/platform-bun": "catalog:",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "vitest": "catalog:"
+  }
+}

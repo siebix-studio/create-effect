@@ -1,4 +1,5 @@
 {
+  "$schema": "./node_modules/@effect/tsgo/schema.json",
   "compilerOptions": {
     // Environment setup & latest features
     "lib": ["ESNext"],
@@ -25,6 +26,24 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false
-  }
+    "noPropertyAccessFromIndexSignature": false,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        // Effect diagnostics are reported by Oxlint; keep the LSP for refactors,
+        // quickinfo and completions so they don't show up twice.
+        "diagnostics": false,
+        // The CLI module, the Bun platform and the test helpers are marked unstable; we build on
+        // them knowingly.
+        "allowedUnstableApis": [
+          "effect/cli",
+          "effect/testing",
+          "@effect/platform-bun",
+          "@effect/vitest"
+        ]
+      }
+    ]
+  },
+  // The Alchemy stacks at the root. Each app in apps/ has its own tsconfig.
+  "include": ["*.ts", "stacks"]
 }

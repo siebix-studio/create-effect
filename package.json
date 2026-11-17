@@ -1,12 +1,62 @@
 {
   "name": "effect-scaffold",
-  "module": "index.ts",
-  "type": "module",
   "private": true,
-  "devDependencies": {
-    "@types/bun": "latest"
+  "workspaces": {
+    "packages": [
+      "apps/*"
+    ],
+    "catalog": {
+      "effect": "^4.1.4",
+      "@effect/platform-bun": "^4.1.4",
+      "@effect/platform-browser": "^4.1.4",
+      "@effect/vitest": "^4.1.4",
+      "vitest": "^5.1.0",
+      "alchemy": "^2.0.0-beta.87",
+      "@alchemy.run/cloudflare": "^2.0.0-beta.87",
+      "@alchemy.run/frontend-frameworks": "^2.0.0-beta.87",
+      "@alchemy.run/github": "^2.0.0-beta.87",
+      "foldkit": "0.170.0",
+      "@foldkit/devtools": "0.170.0",
+      "@foldkit/devtools-mcp": "0.26.0",
+      "@foldkit/oxlint-plugin": "0.15.4",
+      "@foldkit/vite-plugin": "0.29.0",
+      "vite": "^8.3.8",
+      "tailwindcss": "^4.3.5",
+      "@tailwindcss/vite": "^4.3.5",
+      "happy-dom": "^21.0.4"
+    }
   },
-  "peerDependencies": {
-    "typescript": "^7"
+  "type": "module",
+  "scripts": {
+    "dev": "alchemy dev",
+    "deploy": "alchemy deploy",
+    "destroy": "alchemy destroy",
+    "cli": "bun apps/cli/src/bin.ts",
+    "test": "bun --filter './apps/*' test",
+    "typecheck": "tsc --noEmit && bun --filter './apps/*' typecheck",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "changeset": "changeset",
+    "version-packages": "changeset version && bun install --lockfile-only",
+    "release": "scripts/release.sh",
+    "prepare": "lefthook install && effect-tsgo patch --typescript --oxlint"
+  },
+  "devDependencies": {
+    "@alchemy.run/cloudflare": "catalog:",
+    "@alchemy.run/frontend-frameworks": "catalog:",
+    "@alchemy.run/github": "catalog:",
+    "@changesets/changelog-github": "1.0.1",
+    "@changesets/cli": "3.0.3",
+    "@effect/tsgo": "0.70.0",
+    "@foldkit/oxlint-plugin": "catalog:",
+    "@types/bun": "latest",
+    "alchemy": "catalog:",
+    "effect": "catalog:",
+    "lefthook": "^2.2.2",
+    "oxfmt": "^0.79.0",
+    "oxlint": "1.94.0",
+    "oxlint-tsgolint": "7.0.2007",
+    "typescript": "7.0.2",
+    "ultracite": "8.2.1"
   }
 }

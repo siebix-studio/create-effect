@@ -1,0 +1,185 @@
+# Checks every change, deploys `main` to prod, releases the CLI from `main`, and gives each pull
+# request its own preview stage (pr-<number>) that is destroyed when the pull request closes.
+#
+# Secrets come from stacks/github.ts. See "CI/CD" in README.md.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+permissions:
+  contents: read
+
+env:
+  STAGE: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || 'prod' }}
+
+concurrency:
+  # Runs for one stage queue behind each other: a deploy and a destroy must never interleave.
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+      # Format and lint (ultracite).
+      - run: bun run check
+      # The stack files at the root, then every workspace.
+      - run: bun run typecheck
+
+  test:
+    name: Test
+    # CLI tests and Foldkit scene tests (happy-dom) need no secrets, so forks run them too.
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+
+  release:
+    name: Release
+    # Opens or updates the "Version Packages" pull request while changesets are pending. Once that
+    # pull request is merged, publishes the versions npm doesn't have yet. See "Releasing" in
+    # README.md.
+    needs: [check, test]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # The version commit, git tags and GitHub releases.
+      contents: write
+      # The "Version Packages" pull request.
+      pull-requests: write
+      # npm trusted publishing: no npm token is stored in this repository.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Changesets reads history to link each change to its pull request.
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+
+      # Bun packs, npm publishes: Bun has no trusted publishing, and npm needs 11.5.1 or newer for it.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - run: npm install --global npm@^11.5.1
+
+      - uses: changesets/action@v2
+        with:
+          version-script: bun run version-packages
+          publish-script: bun run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    name: Deploy
+    needs: [check, test]
+    # Pull requests from forks get no secrets, so they are checked but not deployed.
+    if: >-
+      github.event.action != 'closed' && (github.event_name == 'push' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # The preview comment.
+      pull-requests: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PULL_REQUEST: ${{ github.event.number }}
+      # `github.sha` is the merge commit on pull requests; the comment shows the pushed commit.
+      BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+
+      - name: Check credentials
+        run: bun alchemy provider check-env --provider Cloudflare --provider GitHub
+      - name: Deploy
+        run: bun alchemy deploy --stage "$STAGE" --yes
+
+  cleanup:
+    name: Destroy preview
+    if: >-
+      github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PULL_REQUEST: ${{ github.event.number }}
+    steps:
+      # An allowlist, so a change to STAGE above can never point this job at prod.
+      - name: Only destroy pr-* stages
+        run: |
+          case "$STAGE" in
+            pr-[0-9]*) ;;
+            *) echo "Refusing to destroy stage '$STAGE'"; exit 1 ;;
+          esac
+
+      # The pushed commit, since a closed pull request may have no merge ref.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+
+      - name: Destroy
+        run: bun alchemy destroy --stage "$STAGE" --yes
