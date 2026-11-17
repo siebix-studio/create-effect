@@ -27,6 +27,7 @@ test(
     const project = path.join(workspace, "my-app");
     expect(existsSync(path.join(project, "bun.lock"))).toBe(true);
     expect(existsSync(path.join(project, ".git"))).toBe(true);
+    expect(existsSync(path.join(project, ".git/hooks/pre-commit"))).toBe(true);
 
     exec("bun", ["run", "check"], project);
     exec("bun", ["run", "typecheck"], project);
