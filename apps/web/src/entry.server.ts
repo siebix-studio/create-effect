@@ -1,3 +1,6 @@
+import geistMonoLatin from "@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url";
+import geistPixelLatin from "@fontsource-variable/geist-pixel/files/geist-pixel-latin-elsh-normal.woff2?url";
+import geistLatin from "@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url";
 import { Array, Effect, Option } from "effect";
 import { Server } from "foldkit/experimental";
 import * as Url from "foldkit/url";
@@ -16,8 +19,15 @@ const metaTag = (
   content: string
 ): string => `<meta ${attribute}="${key}" content="${content}">`;
 
+// Without these the browser finds the fonts only after parsing the stylesheet, paints the text in
+// a fallback and then swaps. Preloading them, at the hashed URLs the stylesheet uses, lets them
+// download alongside it.
+const fontPreload = (href: string): string =>
+  `<link rel="preload" href="${href}" as="font" type="font/woff2" crossorigin>`;
+
 const HEAD = Array.join(
   [
+    ...Array.map([geistLatin, geistPixelLatin, geistMonoLatin], fontPreload),
     metaTag("name", "description", SITE_DESCRIPTION),
     metaTag("property", "og:type", "website"),
     metaTag("property", "og:site_name", SITE_NAME),
