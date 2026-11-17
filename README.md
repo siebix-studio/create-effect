@@ -83,3 +83,7 @@ The workflow reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from the r
 ```sh
 bun alchemy deploy --config stacks/github.ts --stage prod --profile admin
 ```
+
+## License
+
+[MIT](LICENSE)

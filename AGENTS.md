@@ -1,6 +1,6 @@
 # Project
 
-`create-effect` is a CLI that scaffolds full-stack Effect apps deployed with Alchemy, plus the website that presents it. The repository is still named `effect-scaffold`. It is a Bun workspace:
+`create-effect` is a CLI that scaffolds full-stack Effect apps deployed with Alchemy, plus the website that presents it. The repository is `siebix-studio/create-effect`. The Alchemy stack (`EffectScaffold`) and its state store (`effect-scaffold-state`) keep the project's earlier name, because renaming them would change the identity of what is deployed. It is a Bun workspace:
 
 - `apps/cli`: the CLI, published as `@siebix/create-effect` (binary `create-effect`, run as `bunx @siebix/create-effect my-app`). Built with `effect/cli`.
 - `apps/cli/src`: one module per concern, imported as a namespace (`import * as Git from "./git.ts"`). `project.ts` holds the `ProjectName` schema, `answers.ts` settles every question from flags, prompts or defaults, `template.ts` writes the files, and `git.ts` and `package-manager.ts` are services over the command-line programs, so tests replace them with stand-ins. Expected failures are `Schema.TaggedError`s; the ones meant for the user carry `[CliError.userMessage]`, which `Command.run` prints.
