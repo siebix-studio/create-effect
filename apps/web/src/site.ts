@@ -7,9 +7,11 @@ export const TAGLINE =
   "A full-stack Effect app on Cloudflare, from one command";
 
 export const SITE_DESCRIPTION =
-  "Scaffold a full-stack Effect app on Cloudflare with one command: an Effect HTTP API, a Foldkit website and the typed contract they share, running locally and deployed with Alchemy.";
+  "Scaffold a full-stack Effect app on Cloudflare with one command: an Effect HTTP API, a Foldkit website and the typed contract they share, deployed with Alchemy.";
 
 export const PACKAGE_NAME = "@siebix/create-effect";
+
+export const INSTALL_COMMAND = `bunx ${PACKAGE_NAME}`;
 
 export const REPOSITORY_URL = "https://github.com/siebix-studio/create-effect";
 

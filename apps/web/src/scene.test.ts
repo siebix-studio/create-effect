@@ -1,8 +1,9 @@
 import { expect, given, role, scene, text } from "foldkit/scene";
 import { describe, test } from "vitest";
 
-import { INSTALL_COMMAND, Model, update, view } from "./main";
+import { Model, update, view } from "./main";
 import { AppRoute } from "./route";
+import { INSTALL_COMMAND } from "./site";
 
 describe("view", () => {
   test("the home page shows the install command and what it creates", () => {

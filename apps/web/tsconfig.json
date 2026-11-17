@@ -5,5 +5,5 @@
     // Foldkit's own projects compile with this on.
     "exactOptionalPropertyTypes": true
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "plugins", "vite.config.ts", "vitest.config.ts"]
 }

@@ -9,7 +9,7 @@ import { Url, toString as urlToString } from "foldkit/url";
 
 import { AppRoute, homeRouter, urlToAppRoute } from "./route";
 import {
-  PACKAGE_NAME,
+  INSTALL_COMMAND,
   REPOSITORY_URL,
   SIEBIX_URL,
   SITE_NAME,
@@ -83,8 +83,6 @@ export const update = (model: Model, message: Message) =>
   });
 
 // VIEW
-
-export const INSTALL_COMMAND = `bunx ${PACKAGE_NAME}`;
 
 const SESSION = [
   "? Project name (my-app) › shop",
