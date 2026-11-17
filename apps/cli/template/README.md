@@ -25,6 +25,8 @@ bun run test        # API tests, Foldkit scene tests, and a test of the whole st
 
 A [lefthook](https://lefthook.dev) pre-commit hook runs `ultracite fix` on staged files. `bun install` sets it up once the project is a git repository; if you create the repository later, run `bunx lefthook install`.
 
+In VS Code, install the [Oxc extension](https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode); `.vscode/settings.json` formats on save and applies lint fixes with it.
+
 ## Deploying
 
 Deploying needs Cloudflare credentials. Connect your account once:
