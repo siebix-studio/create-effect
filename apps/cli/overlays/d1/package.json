@@ -1,0 +1,7 @@
+{
+  "workspaces": {
+    "catalog": {
+      "@effect/sql-d1": "^4.1.4"
+    }
+  }
+}

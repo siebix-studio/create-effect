@@ -8,6 +8,7 @@ import * as Path from "effect/Path";
 
 import PackageJson from "../package.json" with { type: "json" };
 import * as Answers from "./answers.ts";
+import * as Database from "./database.ts";
 import * as Git from "./git.ts";
 import * as PackageManager from "./package-manager.ts";
 import * as Template from "./template.ts";
@@ -19,6 +20,13 @@ const directory = Argument.Path("directory", { pathType: "directory" }).pipe(
     "Where to create the project; its last segment is the project name. Asked for when omitted"
   ),
   Argument.optional
+);
+
+const database = Flag.Literals("database", Database.NAMES).pipe(
+  Flag.withDescription(
+    "Add a database: d1 (Cloudflare's SQLite), neon (Postgres) or none. Asked for when omitted"
+  ),
+  Flag.optional
 );
 
 const install = Flag.Boolean("install").pipe(
@@ -76,7 +84,7 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
   const relativeDirectory =
     path.relative(path.resolve(), project.directory) || ".";
 
-  yield* Template.write(project);
+  yield* Template.write(project, answers.database);
   yield* done(`Created ${project.name} in ${project.directory}`);
 
   // The repository exists before the install and the commit comes after it, so the first commit
@@ -106,12 +114,16 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
     );
   }
 
+  const usesNeon = answers.database === "neon";
+
   yield* Console.log(
     [
       "",
       "Next steps:",
       `  cd ${relativeDirectory}`,
       ...(isInstalled ? [] : ["  bun install"]),
+      // Neon has no local stand-in, so the first `bun run dev` already creates a database there.
+      ...(usesNeon ? ["  bun alchemy profile edit --add Neon"] : []),
       "  bun run dev",
       "",
       "To deploy, connect Cloudflare once with `bun alchemy profile edit --add Cloudflare`,",
@@ -127,6 +139,7 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
         `  ${[
           `bunx ${PackageJson.name}`,
           relativeDirectory,
+          `--database ${answers.database}`,
           answers.install ? "--install" : "--no-install",
           answers.git ? "--git" : "--no-git",
           ...(answers.overwrite ? ["--force"] : []),
@@ -144,6 +157,7 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
  */
 export const command = Command.make("create-effect", {
   directory,
+  database,
   install,
   git,
   force,
@@ -160,6 +174,10 @@ export const command = Command.make("create-effect", {
       {
         command: `${self} my-app --yes`,
         description: "Create ./my-app with every default",
+      },
+      {
+        command: `${self} my-app --database d1`,
+        description: "Create ./my-app with a D1 database",
       },
       {
         command: `${self} my-app --no-install --no-git`,

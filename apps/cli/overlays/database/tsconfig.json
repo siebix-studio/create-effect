@@ -1,0 +1,44 @@
+{
+  "$schema": "./node_modules/@effect/tsgo/schema.json",
+  "compilerOptions": {
+    // Environment setup & latest features
+    "lib": ["ESNext"],
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleDetection": "force",
+    "allowJs": true,
+    "types": ["bun"],
+
+    // Bundler mode
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    // Best practices
+    "strict": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        // Effect diagnostics are reported by Oxlint; keep the LSP for refactors,
+        // quickinfo and completions so they don't show up twice.
+        "diagnostics": false,
+        // Effect's HTTP and SQL modules and test helpers are marked unstable; this app builds on them
+        // knowingly.
+        "allowedUnstableApis": [
+          "@effect/vitest",
+          "effect/http",
+          "effect/http-api",
+          "effect/sql"
+        ]
+      }
+    ]
+  },
+  // The Alchemy stack at the root. Each app and package has its own tsconfig.
+  "include": ["*.ts", "test"]
+}

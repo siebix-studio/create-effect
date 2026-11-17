@@ -93,6 +93,7 @@ export const update = (model: Model, message: Message) =>
 
 const SESSION = [
   "? Project name (my-app) › shop",
+  "? Add a database? › D1",
   "? Install dependencies with bun? › yes",
   "? Initialize a git repository? › yes",
   "",
@@ -123,9 +124,14 @@ const FEATURES: ReadonlyArray<Feature> = [
       "The website's client is derived from the contract the API implements. Change one side and the other stops compiling.",
   },
   {
+    title: "A database if you want one",
+    description:
+      "D1 or Neon Postgres, with a migration, a repository written in Effect SQL and tests that cover it. Or none at all.",
+  },
+  {
     title: "The whole stack on your machine",
     description:
-      "bun run dev and bun run test start the API and the website locally. Neither needs a Cloudflare account.",
+      "bun run dev and bun run test start the API, the website and a D1 database locally. Neither needs a Cloudflare account.",
   },
   {
     title: "Deployed with Alchemy",
@@ -140,7 +146,6 @@ const FEATURES: ReadonlyArray<Feature> = [
 ];
 
 const ROADMAP: ReadonlyArray<string> = [
-  "A database: D1 or Neon Postgres",
   "Sign-in with better-auth",
   "CI/CD with a preview for every pull request",
 ];
@@ -178,7 +183,7 @@ const sessionView = (h: HtmlBuilder<Message>): Html =>
   h.section(
     [h.Class("grid gap-6")],
     [
-      h.h2([h.Class(SECTION_HEADING_CLASS)], ["Three questions"]),
+      h.h2([h.Class(SECTION_HEADING_CLASS)], ["Four questions"]),
       h.p(
         [h.Class("max-w-xl text-pretty text-neutral-600")],
         [

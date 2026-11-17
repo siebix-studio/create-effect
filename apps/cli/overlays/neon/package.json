@@ -1,0 +1,13 @@
+{
+  "workspaces": {
+    "catalog": {
+      "@alchemy.run/neon": "^2.0.0-beta.87",
+      "@alchemy.run/sql": "^2.0.0-beta.87",
+      "@effect/sql-pg": "^4.1.4",
+      "pg": "^8.22.0"
+    }
+  },
+  "devDependencies": {
+    "@alchemy.run/neon": "catalog:"
+  }
+}

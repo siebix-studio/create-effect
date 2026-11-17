@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@effect/sql-d1": "catalog:"
+  }
+}

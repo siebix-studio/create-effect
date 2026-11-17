@@ -1,7 +1,7 @@
 {
   "name": "@siebix/create-effect",
   "version": "0.1.1",
-  "description": "Create a full-stack Effect app on Cloudflare with one command: an Effect HTTP API, a Foldkit website and the typed contract they share, deployed with Alchemy.",
+  "description": "Create a full-stack Effect app on Cloudflare with one command: an Effect HTTP API, a Foldkit website and the typed contract they share, with a D1 or Neon Postgres database if you want one, deployed with Alchemy.",
   "keywords": [
     "alchemy",
     "bun",
@@ -9,10 +9,13 @@
     "cloudflare",
     "cloudflare-workers",
     "create",
+    "d1",
     "effect",
     "effect-ts",
     "foldkit",
     "full-stack",
+    "neon",
+    "postgres",
     "scaffold",
     "starter",
     "template",
@@ -36,6 +39,7 @@
     "create-effect": "./src/bin.ts"
   },
   "files": [
+    "overlays",
     "src",
     "template"
   ],

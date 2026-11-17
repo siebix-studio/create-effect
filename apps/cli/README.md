@@ -6,7 +6,7 @@ Create a full-stack [Effect](https://effect.website) app on Cloudflare with one 
 bunx @siebix/create-effect
 ```
 
-It asks for a project name, whether to install dependencies and whether to initialize git, then writes a project you can run straight away:
+It asks for a project name, which database to add, whether to install dependencies and whether to initialize git, then writes a project you can run straight away:
 
 ```sh
 cd my-app
@@ -25,6 +25,7 @@ It runs on [Bun](https://bun.sh), and so does the project it creates.
 | `alchemy.run.ts` | The [Alchemy](https://alchemy.run) stack that deploys both |
 
 - **One typed contract.** The website's client is derived from the contract the API implements. Change one side and the other stops compiling.
+- **A database if you want one.** D1 or Neon Postgres, with a migration, a repository written in Effect SQL and tests that cover it. D1 runs on your machine with the rest. Neon is a real Neon project, also in development, so it needs a Neon account from the start.
 - **The whole stack on your machine.** `bun run dev` and `bun run test` start the API and the website locally. Neither needs a Cloudflare account.
 - **Tooling that is already set up.** Ultracite, oxlint with Effect rules, oxfmt and effect-tsgo, passing from the first commit.
 
@@ -34,6 +35,7 @@ Every question has a flag, and a flag skips its question.
 
 | Flag | What |
 | --- | --- |
+| `--database d1\|neon\|none` | Add a D1 database, a Neon Postgres database, or none (the default) |
 | `--install`, `--no-install` | Run `bun install`, or don't |
 | `--git`, `--no-git` | Create a git repository with a first commit, or don't |
 | `--force` | Write into a directory that is not empty without asking |
@@ -41,6 +43,7 @@ Every question has a flag, and a flag skips its question.
 
 ```sh
 bunx @siebix/create-effect my-app --yes
+bunx @siebix/create-effect my-app --database d1
 ```
 
 Where nothing can be asked, such as in CI, the defaults apply and the name has to be given.

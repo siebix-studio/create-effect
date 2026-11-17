@@ -15,10 +15,13 @@ The project it creates is a Bun workspace:
 | `apps/web` | A prerendered Foldkit website that calls the API through a typed client |
 | `alchemy.run.ts` | The stack that deploys both |
 
-Run without arguments, it asks for the project name, whether to install dependencies and whether to initialize git. Each question has a flag, and a flag skips its question:
+With a database, the API also gets a migration, a repository written in Effect SQL and an endpoint that reads back what it stored. D1 runs on your machine with the rest; Neon is a real Neon project, also in development.
+
+Run without arguments, it asks for the project name, which database to add, whether to install dependencies and whether to initialize git. Each question has a flag, and a flag skips its question:
 
 | Flag | What |
 | --- | --- |
+| `--database d1\|neon\|none` | Add a D1 database, a Neon Postgres database, or none (the default) |
 | `--install`, `--no-install` | Run `bun install`, or don't |
 | `--git`, `--no-git` | Create a git repository with a first commit, or don't |
 | `--force` | Write into a directory that is not empty without asking |
@@ -32,6 +35,7 @@ Where nothing can be asked (CI, a pipe) the defaults apply, and the name has to 
 | --- | --- |
 | `apps/cli` | The CLI (`@siebix/create-effect`, binary `create-effect`), built with `effect/cli` |
 | `apps/cli/template` | The project the CLI creates, copied as is with the project name filled in |
+| `apps/cli/overlays` | What a database adds to that project, written on top of the template |
 | `apps/web` | The website at [effect.siebix.com](https://effect.siebix.com), a prerendered Foldkit app |
 | `alchemy.run.ts` | The deploy stack for the website |
 | `stacks/github.ts` | CI credentials (Cloudflare API token and account ID as GitHub secrets) |
@@ -42,7 +46,7 @@ Where nothing can be asked (CI, a pipe) the defaults apply, and the name has to 
 bun install
 bun run check       # lint and format (ultracite)
 bun run typecheck   # stack files, then every app
-bun run test        # CLI tests (one creates a project and runs its checks) and Foldkit scene tests
+bun run test        # CLI tests (some create a project and run its checks) and Foldkit scene tests
 bun run cli -- my-app
 bun run dev         # the website under alchemy dev
 ```

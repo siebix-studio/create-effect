@@ -11,6 +11,7 @@ import * as Path from "effect/Path";
 import type * as PlatformError from "effect/PlatformError";
 import * as Queue from "effect/Queue";
 import * as Ref from "effect/Ref";
+import * as Schema from "effect/Schema";
 import * as Terminal from "effect/Terminal";
 import * as TestConsole from "effect/testing/TestConsole";
 
@@ -78,6 +79,8 @@ const key = (name: string): Terminal.UserInput => ({
 const typed = (text: string) => Array.from(text, key);
 
 const enter = key("enter");
+
+const down = key("down");
 
 const size = Effect.gen(function* () {
   const sizes = yield* Queue.make<Terminal.Size, Cause.Done>();
@@ -303,15 +306,20 @@ describe("questions", () => {
       const directory = yield* projectDirectory("shop");
 
       const steps = yield* scaffold([]).pipe(
-        Effect.provide(answering([...typed(directory), enter, enter, key("n")]))
+        Effect.provide(
+          answering([...typed(directory), enter, down, enter, enter, key("n")])
+        )
       );
 
       assert.deepStrictEqual(steps, ["install"]);
       assert.isTrue(yield* fs.exists(path.join(directory, "package.json")));
+      assert.isTrue(
+        yield* fs.exists(path.join(directory, "migrations/0001_greetings.sql"))
+      );
 
       const output = (yield* TestConsole.logLines).join("\n");
       assert.include(output, "Run it again without the questions:");
-      assert.include(output, "--install --no-git");
+      assert.include(output, "--database d1 --install --no-git");
     }).pipe(Effect.provide(TestLayer))
   );
 
@@ -319,9 +327,12 @@ describe("questions", () => {
     Effect.gen(function* () {
       const directory = yield* projectDirectory("my-app");
 
-      const steps = yield* scaffold([directory, "--no-git"]).pipe(
-        Effect.provide(answering([key("y")]))
-      );
+      const steps = yield* scaffold([
+        directory,
+        "--database",
+        "none",
+        "--no-git",
+      ]).pipe(Effect.provide(answering([key("y")])));
 
       assert.deepStrictEqual(steps, ["install"]);
     }).pipe(Effect.provide(TestLayer))
@@ -359,7 +370,7 @@ describe("questions", () => {
       assert.deepStrictEqual(yield* fs.readDirectory(directory), ["notes.txt"]);
 
       yield* scaffold([directory, "--no-install", "--no-git"]).pipe(
-        Effect.provide(answering([key("y")]))
+        Effect.provide(answering([key("y"), enter]))
       );
       assert.isTrue(yield* fs.exists(path.join(directory, "package.json")));
       assert.include((yield* TestConsole.logLines).join("\n"), "--force");
@@ -376,6 +387,142 @@ describe("questions", () => {
       );
 
       assert.strictEqual(error._tag, "Cancelled");
+      assert.isFalse(yield* fs.exists(directory));
+    }).pipe(Effect.provide(TestLayer))
+  );
+});
+
+describe("databases", () => {
+  const Dependencies = Schema.Record(Schema.String, Schema.String);
+
+  const PackageJson = Schema.fromJsonString(
+    Schema.Struct({
+      name: Schema.String,
+      dependencies: Schema.optionalKey(Dependencies),
+      devDependencies: Schema.optionalKey(Dependencies),
+      workspaces: Schema.optionalKey(Schema.Struct({ catalog: Dependencies })),
+    })
+  );
+
+  const readPackageJson = Effect.fn("Test.readPackageJson")(function* (
+    file: string
+  ) {
+    const fs = yield* FileSystem.FileSystem;
+
+    return yield* Schema.decodeEffect(PackageJson)(
+      yield* fs.readFileString(file)
+    );
+  });
+
+  it.effect("adds none unless asked", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([directory]);
+
+      assert.isFalse(yield* fs.exists(path.join(directory, "migrations")));
+      assert.notInclude(
+        yield* fs.readFileString(path.join(directory, "package.json")),
+        "sql"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("writes a D1 database on top of the template", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([directory, "--database", "d1"]);
+
+      const files = yield* listFiles(directory);
+      assert.includeMembers(
+        [...files],
+        [
+          "migrations/0001_greetings.sql",
+          "apps/api/src/database.ts",
+          "apps/api/src/repos/greeting.ts",
+          "apps/web/src/main.ts",
+        ]
+      );
+
+      const stack = yield* fs.readFileString(
+        path.join(directory, "alchemy.run.ts")
+      );
+
+      assert.include(stack, 'workerName: "my-app-state"');
+      assert.include(stack, "yield* Database;");
+
+      const contents = yield* Effect.forEach(files, (file) =>
+        fs.readFileString(path.join(directory, file))
+      );
+
+      assert.isFalse(
+        contents.some((content) => content.includes("{{")),
+        "a placeholder was left unfilled"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("adds a database's packages to the ones already there", () =>
+    Effect.gen(function* () {
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([directory, "--database", "neon"]);
+
+      const root = yield* readPackageJson(path.join(directory, "package.json"));
+      assert.strictEqual(root.name, "my-app");
+      assert.include(root.workspaces?.catalog, {
+        effect: "^4.1.4",
+        pg: "^8.22.0",
+      });
+      assert.include(root.devDependencies, {
+        "@alchemy.run/neon": "catalog:",
+        vitest: "catalog:",
+      });
+
+      const api = yield* readPackageJson(
+        path.join(directory, "apps/api/package.json")
+      );
+
+      assert.strictEqual(api.name, "@app/api");
+      assert.deepStrictEqual(Object.keys(api.dependencies ?? {}), [
+        "@alchemy.run/cloudflare",
+        "@alchemy.run/neon",
+        "@alchemy.run/sql",
+        "@app/domain",
+        "@effect/sql-pg",
+        "alchemy",
+        "effect",
+        "pg",
+      ]);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("says how to connect Neon before the first run", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([directory, "--database", "neon"]);
+
+      assert.include(
+        (yield* TestConsole.logLines).join("\n"),
+        "bun alchemy profile edit --add Neon"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("rejects a database it does not know", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const directory = yield* projectDirectory("my-app");
+
+      yield* Effect.flip(scaffold([directory, "--database", "mysql"]));
+
       assert.isFalse(yield* fs.exists(directory));
     }).pipe(Effect.provide(TestLayer))
   );
