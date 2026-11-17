@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@effect/platform-browser": "catalog:",
+    "@fontsource-variable/geist": "catalog:",
+    "@fontsource-variable/geist-mono": "catalog:",
+    "@fontsource-variable/geist-pixel": "catalog:",
     "effect": "catalog:",
     "foldkit": "catalog:"
   },

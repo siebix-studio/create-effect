@@ -5,12 +5,14 @@ import { INSTALL_COMMAND, Model, update, view } from "./main";
 import { AppRoute } from "./route";
 
 describe("view", () => {
-  test("the home page shows the install command", () => {
+  test("the home page shows the install command and what it creates", () => {
     scene(
       { update, view },
       given(Model.make({ route: AppRoute.Home() })),
       expect(role("heading", { name: "create-effect" })).toExist(),
-      expect(text(INSTALL_COMMAND)).toExist()
+      expect(text(INSTALL_COMMAND)).toExist(),
+      expect(role("heading", { name: "One typed contract" })).toExist(),
+      expect(role("link", { name: "View the source on GitHub" })).toExist()
     );
   });
 
