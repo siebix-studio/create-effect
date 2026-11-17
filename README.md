@@ -1,6 +1,6 @@
 # create-effect
 
-A CLI that scaffolds full-stack Effect apps on Cloudflare, deployed with [Alchemy](https://alchemy.run). In development.
+A CLI that scaffolds full-stack Effect apps on Cloudflare, deployed with [Alchemy](https://alchemy.run).
 
 ```sh
 bunx @siebix/create-effect my-app
