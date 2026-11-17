@@ -67,12 +67,12 @@ Releases of `@siebix/create-effect` are driven by [Changesets](https://github.co
 
 `bun run release` is what CI runs to publish. Bun packs the tarball, because it resolves the `catalog:` versions, and npm publishes it. `RELEASE_DRY_RUN=1 bun run release` shows the publish plan and the packed files without publishing.
 
-The CLI is still `"private": true` in `apps/cli/package.json`, so nothing is published yet; changesets and version pull requests already work. Before removing that line:
+CI publishes through npm trusted publishing, so no npm token is stored here. Two things are set up once for that:
 
-- Add `@siebix/create-effect` on npmjs.com with this repository and `ci.yml` as its trusted publisher. No npm token is stored here.
-- Allow GitHub Actions to create pull requests (repository settings, Actions, General).
+- On npmjs.com, the package's settings name this repository and `ci.yml` as a trusted publisher, with direct `npm publish` allowed. npm configures this from the package's own page, so the very first version is published by hand: `npm login`, then `bun run release` on `main`.
+- GitHub Actions is allowed to create pull requests, in the Actions settings of both the organization and the repository.
 
-Removing the line publishes the current version on the next push to `main`. Pull requests opened by CI don't start workflow runs, so close and reopen the "Version Packages" pull request to get its checks.
+Pull requests opened by CI don't start workflow runs, so close and reopen the "Version Packages" pull request to get its checks.
 
 ## CI/CD
 
