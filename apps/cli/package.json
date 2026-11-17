@@ -1,7 +1,6 @@
 {
   "name": "@siebix/create-effect",
   "version": "0.1.0",
-  "private": true,
   "description": "Scaffold full-stack Effect apps on Cloudflare, deployed with Alchemy.",
   "license": "MIT",
   "repository": {
