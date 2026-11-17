@@ -153,14 +153,6 @@ const heroView = (h: HtmlBuilder<Message>): Html =>
   h.header(
     [h.Class("grid gap-6")],
     [
-      h.span(
-        [
-          h.Class(
-            "w-fit rounded-full border border-neutral-300 px-3 py-1 font-mono text-xs text-neutral-600"
-          ),
-        ],
-        ["In development"]
-      ),
       h.h1(
         [h.Class("text-5xl leading-none text-balance sm:text-7xl")],
         [SITE_NAME]
