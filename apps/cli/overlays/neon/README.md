@@ -36,7 +36,7 @@ bun run test        # API tests, Foldkit scene tests, and a test of the whole st
 
 The API stores every name it greets in Postgres, and `GET /greetings` reads the last ones back.
 
-- `migrations/` holds the schema as numbered `.sql` files. The ones that have not run yet are applied, each in a transaction, whenever the stack starts or deploys. To change the schema, add a file; a file that has been applied cannot be edited.
+- `migrations/` holds the schema as numbered `.sql` files. Alchemy applies them with `pg`, which is why it is a dev dependency at the root; the Worker itself connects with Effect's own Postgres driver. The ones that have not run yet are applied, each in a transaction, whenever the stack starts or deploys. To change the schema, add a file; a file that has been applied cannot be edited.
 - `apps/api/src/repos/greeting.ts` holds the queries, written with [Effect SQL](https://effect.website). Handlers call the repository and never see SQL.
 - `apps/api/src/database.ts` declares the Neon project and the Hyperdrive connection in front of it, and `apps/api/src/worker.ts` binds that connection to the Worker.
 
