@@ -1,6 +1,4 @@
-import type { ServerResponse } from "node:http";
-
-import { Array, Effect, Option } from "effect";
+import { Array, Cause, Effect, Option, String } from "effect";
 import type { Plugin } from "vite";
 
 import { SITE_OG_IMAGE_PATH } from "../src/seo/og-image.ts";
@@ -12,76 +10,58 @@ import { renderOgCard } from "./og-card.ts";
 type GeneratedFile = Readonly<{
   path: string;
   contentType: string;
-  render: () => Promise<string | Uint8Array>;
+  render: Effect.Effect<string | Uint8Array>;
 }>;
 
 const GENERATED_FILES: ReadonlyArray<GeneratedFile> = [
   {
     path: ROBOTS_PATH,
     contentType: "text/plain; charset=utf-8",
-    render: async () => await Promise.resolve(robotsTxt),
+    render: Effect.succeed(robotsTxt),
   },
   {
     path: SITEMAP_PATH,
     contentType: "application/xml; charset=utf-8",
-    render: async () => await Promise.resolve(sitemapXml),
+    render: Effect.succeed(sitemapXml),
   },
   {
     path: SITE_OG_IMAGE_PATH,
     contentType: "image/png",
-    render: async () =>
-      await renderOgCard({ title: TAGLINE, footer: INSTALL_COMMAND }),
+    render: renderOgCard({ title: TAGLINE, footer: INSTALL_COMMAND }),
   },
 ];
 
-const serveGeneratedFile = async (
-  pathname: string,
-  response: ServerResponse
-): Promise<boolean> => {
-  const maybeFile = Array.findFirst(
-    GENERATED_FILES,
-    (file) => file.path === pathname
-  );
+const LEADING_SLASH_LENGTH = 1;
 
-  if (Option.isNone(maybeFile)) {
-    return false;
-  }
+const toAssetFileName = String.slice(LEADING_SLASH_LENGTH);
 
-  response.setHeader("content-type", maybeFile.value.contentType);
-  response.end(await maybeFile.value.render());
+const maybeGeneratedFile = (pathname: string): Option.Option<GeneratedFile> =>
+  Array.findFirst(GENERATED_FILES, ({ path }) => path === pathname);
 
-  return true;
-};
-
-/**
- * robots.txt, the sitemap and the Open Graph image. They are written into the client build, and
- * served on request by the dev server.
- */
 export const seoFiles = (): Plugin => ({
   name: "create-effect-seo-files",
   configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const { pathname } = new URL(request.url ?? "/", "http://localhost");
 
-      Effect.runFork(
-        Effect.tryPromise(
-          async () => await serveGeneratedFile(pathname, response)
-        ).pipe(
-          Effect.matchEffect({
-            onFailure: ({ cause }) =>
-              Effect.sync(() => {
-                next(cause);
-              }),
-            onSuccess: (isServed) =>
-              Effect.when(
-                Effect.sync(() => {
-                  next();
-                }),
-                Effect.succeed(!isServed)
-              ),
-          })
-        )
-      );
+      Option.match(maybeGeneratedFile(pathname), {
+        onNone: () => {
+          next();
+        },
+        onSome: ({ contentType, render }) => {
+          Effect.runFork(
+            Effect.matchCause(render, {
+              onFailure: (cause) => {
+                next(Cause.squash(cause));
+              },
+              onSuccess: (body) => {
+                response.setHeader("content-type", contentType);
+                response.end(body);
+              },
+            })
+          );
+        },
+      });
     });
   },
   async generateBundle() {
@@ -89,14 +69,19 @@ export const seoFiles = (): Plugin => ({
       return;
     }
 
-    await Promise.all(
-      Array.map(GENERATED_FILES, async (file) => {
-        this.emitFile({
-          type: "asset",
-          fileName: file.path.slice(1),
-          source: await file.render(),
-        });
-      })
+    await Effect.runPromise(
+      Effect.forEach(
+        GENERATED_FILES,
+        ({ path, render }) =>
+          Effect.map(render, (source) =>
+            this.emitFile({
+              type: "asset",
+              fileName: toAssetFileName(path),
+              source,
+            })
+          ),
+        { concurrency: "unbounded", discard: true }
+      )
     );
   },
 });

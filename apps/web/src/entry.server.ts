@@ -13,9 +13,8 @@ export { prerenderPaths } from "./route";
 
 const ALLOWED_METHODS: ReadonlyArray<string> = ["GET", "HEAD"];
 
-// Without these the browser finds the fonts only after parsing the stylesheet, paints the text in
-// a fallback and then swaps. Preloading them, at the hashed URLs the stylesheet uses, lets them
-// download alongside it.
+// NOTE: Without these the browser finds the fonts only after parsing the stylesheet, paints the
+// text in a fallback and then swaps it.
 const fontPreload = (href: string): string =>
   `<link rel="preload" href="${href}" as="font" type="font/woff2" crossorigin>`;
 

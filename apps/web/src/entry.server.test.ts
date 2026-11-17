@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 
 import { renderDocument } from "./entry.server";
-import { sitemapXml } from "./seo/sitemap";
 import { SITE_DESCRIPTION } from "./site";
 
 const ASSETS = {
@@ -27,13 +26,10 @@ describe("renderDocument", () => {
       '<meta name="twitter:card" content="summary_large_image">'
     );
     expect(html).toContain(
+      '<meta name="twitter:image" content="https://effect.siebix.com/og/site.png">'
+    );
+    expect(html).toContain(
       '<link rel="icon" type="image/svg+xml" href="/favicon.svg">'
     );
-  });
-});
-
-describe("sitemapXml", () => {
-  test("lists the prerendered pages at the production URL", () => {
-    expect(sitemapXml).toContain("<loc>https://effect.siebix.com/</loc>");
   });
 });

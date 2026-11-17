@@ -97,10 +97,7 @@ const SESSION = [
   "  bun run dev",
 ].join("\n");
 
-interface Feature {
-  readonly title: string;
-  readonly description: string;
-}
+type Feature = Readonly<{ title: string; description: string }>;
 
 const FEATURES: ReadonlyArray<Feature> = [
   {

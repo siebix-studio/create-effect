@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { Resvg } from "@resvg/resvg-js";
 import { Array, Effect, Option } from "effect";
 import satori from "satori";
+import type { Font } from "satori";
 
 import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH } from "../src/seo/og-image.ts";
 import { SITE_NAME, SITE_URL } from "../src/site.ts";
@@ -22,6 +23,8 @@ type CardNode = Readonly<{
 }>;
 
 const SITE_HOST = new URL(SITE_URL).host;
+
+// FONT
 
 const PIXEL_FONT = "Geist Pixel";
 
@@ -49,6 +52,29 @@ const FONT_FILES: ReadonlyArray<FontFile> = [
   },
 ];
 
+const resolveFromHere = createRequire(import.meta.url);
+
+const toFont = ({ name, weight }: FontFile, data: Buffer): Font => ({
+  name,
+  weight,
+  style: "normal",
+  data,
+});
+
+const loadFont = (fontFile: FontFile) =>
+  Effect.map(
+    Effect.promise(
+      async () => await readFile(resolveFromHere.resolve(fontFile.file))
+    ),
+    (data) => toFont(fontFile, data)
+  );
+
+const loadFonts = Effect.forEach(FONT_FILES, loadFont, {
+  concurrency: "unbounded",
+});
+
+// TEMPLATE
+
 type TitleSize = Readonly<{ maxLength: number; fontSize: number }>;
 
 const TITLE_SIZES: ReadonlyArray<TitleSize> = [
@@ -58,26 +84,6 @@ const TITLE_SIZES: ReadonlyArray<TitleSize> = [
 ];
 
 const LONG_TITLE_SIZE = 56;
-
-const FONT_STYLE = "normal" as const;
-
-const resolveFromHere = createRequire(import.meta.url);
-
-const loadFonts = Effect.runSync(
-  Effect.cached(
-    Effect.promise(
-      async () =>
-        await Promise.all(
-          Array.map(FONT_FILES, async ({ name, weight, file }) => ({
-            name,
-            weight,
-            style: FONT_STYLE,
-            data: await readFile(resolveFromHere.resolve(file)),
-          }))
-        )
-    )
-  )
-);
 
 const titleSize = (title: string): number =>
   Option.match(
@@ -146,14 +152,20 @@ const cardTree = ({ title, footer }: OgCard): CardNode =>
     ]
   );
 
-export const renderOgCard = async (card: OgCard): Promise<Uint8Array> => {
-  const fonts = await Effect.runPromise(loadFonts);
+// RENDER
 
-  const svg = await satori(cardTree(card), {
-    width: OG_IMAGE_WIDTH,
-    height: OG_IMAGE_HEIGHT,
-    fonts,
+export const renderOgCard = (card: OgCard): Effect.Effect<Uint8Array> =>
+  Effect.gen(function* () {
+    const fonts = yield* loadFonts;
+
+    const svg = yield* Effect.promise(
+      async () =>
+        await satori(cardTree(card), {
+          width: OG_IMAGE_WIDTH,
+          height: OG_IMAGE_HEIGHT,
+          fonts,
+        })
+    );
+
+    return new Resvg(svg).render().asPng();
   });
-
-  return new Resvg(svg).render().asPng();
-};
