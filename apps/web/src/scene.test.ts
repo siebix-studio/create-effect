@@ -17,6 +17,15 @@ describe("view", () => {
     );
   });
 
+  test("the changelog page lists the releases", () => {
+    scene(
+      { update, view },
+      given(Model.make({ route: AppRoute.Changelog() })),
+      expect(role("heading", { name: "Changelog" })).toExist(),
+      expect(role("heading", { name: "0.1.0" })).toExist()
+    );
+  });
+
   test("an unknown path shows the not found page", () => {
     scene(
       { update, view },
