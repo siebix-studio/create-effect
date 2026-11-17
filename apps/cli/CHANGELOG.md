@@ -1,5 +1,11 @@
 # @siebix/create-effect
 
+## 0.1.1
+
+### Patch Changes
+
+- [#4](https://github.com/siebix-studio/create-effect/pull/4) [`9f5da03`](https://github.com/siebix-studio/create-effect/commit/9f5da031f6f9de0a42430d0f5f537c94ebafd3ea) Thanks [@Siebe-Studio](https://github.com/Siebe-Studio)! - The package now has a README, keywords, and links to the website, the source and Siebix, so its page on npm says what it is and how to use it.
+
 ## 0.1.0
 
 ### Minor Changes
