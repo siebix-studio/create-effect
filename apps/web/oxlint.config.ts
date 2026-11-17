@@ -8,7 +8,6 @@ export default defineConfig({
   rules: {
     "typescript/array-type": ["error", { default: "generic" }],
     "no-shadow": "off",
-    "unicorn/no-array-method-this-argument": "off",
   },
   overrides: [
     {

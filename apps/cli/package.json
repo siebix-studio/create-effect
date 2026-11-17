@@ -12,7 +12,8 @@
     "create-effect": "./src/bin.ts"
   },
   "files": [
-    "src"
+    "src",
+    "template"
   ],
   "type": "module",
   "publishConfig": {

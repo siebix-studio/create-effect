@@ -1,0 +1,20 @@
+# dependencies (bun install)
+node_modules
+
+# output
+dist
+
+# dotenv environment variable files
+.env
+.env.*
+
+# caches
+.cache
+*.tsbuildinfo
+
+# editors and OS
+.idea
+.DS_Store
+
+# alchemy
+.alchemy
