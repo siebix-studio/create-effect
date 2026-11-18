@@ -1,5 +1,13 @@
 # @siebix/create-effect
 
+## 0.4.0
+
+### Minor Changes
+
+- [#8](https://github.com/siebix-studio/create-effect/pull/8) [`2832d24`](https://github.com/siebix-studio/create-effect/commit/2832d247f0e2b931823cd0813a2f0558e0afb787) Thanks [@Siebe-Studio](https://github.com/Siebe-Studio)! - `create-effect` now asks whether to add a database, and `--database d1|neon|none` answers it up front. With D1 or Neon Postgres, the new project's API stores every name it greets and `GET /greetings` reads the last ones back: there is a migration in `migrations/`, a repository written in Effect SQL, and tests for both. D1 runs on your machine under `bun run dev` and `bun run test`. Neon is reached through Hyperdrive and is a real Neon project in development too, so it needs a Neon account from the first run. Without a flag, and with `--yes`, no database is added, as before. `create-effect add d1` and `add neon` add a database to a project created earlier. New projects keep the stack's providers in `providers.ts`, where Neon is registered; a project from an earlier version needs that file before `add neon` works, and the command says so.
+
+- [#12](https://github.com/siebix-studio/create-effect/pull/12) [`df2f0fd`](https://github.com/siebix-studio/create-effect/commit/df2f0fd0d5c6f757043c8a000977390dca7e93a0) Thanks [@Siebe-Studio](https://github.com/Siebe-Studio)! - Each run that creates a project or adds a feature is now counted, and the [website](https://effect.siebix.com) shows how many projects were created and with which options. A run reports the options that were chosen, the version of the CLI and the operating system. It never reports the project's name or a path, and the CLI says so whenever it reports. `DO_NOT_TRACK=1` or `CREATE_EFFECT_TELEMETRY=0` turns it off, and nothing is reported from CI.
+
 ## 0.3.0
 
 ### Minor Changes
