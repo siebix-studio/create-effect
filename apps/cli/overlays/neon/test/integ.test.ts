@@ -1,16 +1,13 @@
-import * as Cloudflare from "@alchemy.run/cloudflare";
-import * as Neon from "@alchemy.run/neon";
 import * as Test from "@alchemy.run/test/Vitest";
-import { Effect, Layer } from "effect";
+import { Effect } from "effect";
 import { HttpClient } from "effect/http";
 import { expect } from "vitest";
 
 import Stack from "../alchemy.run.ts";
+import { providers } from "../providers.ts";
 
 const { test, beforeAll, afterAll, deploy, destroy } = Test.make({
-  // Each provider layer builds everything it needs itself; merging them is what Alchemy documents.
-  // oxlint-disable-next-line effecttsgo/layer-merge-all-with-dependencies
-  providers: Layer.mergeAll(Cloudflare.providers(), Neon.providers()),
+  providers,
   dev: true,
 });
 

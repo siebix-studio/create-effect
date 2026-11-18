@@ -1,7 +1,7 @@
 import { assert, it } from "@effect/vitest";
 
 import RootPackageJson from "../../../package.json" with { type: "json" };
-import D1PackageJson from "../overlays/d1/package.json" with { type: "json" };
+import GitHubActionsPackageJson from "../overlays/github-actions/package.json" with { type: "json" };
 import NeonPackageJson from "../overlays/neon/package.json" with { type: "json" };
 import TemplatePackageJson from "../template/package.json" with { type: "json" };
 
@@ -13,14 +13,16 @@ it("the template and its overlays pin the same versions as this repository", () 
     })
   );
 
-  const pinned = Object.entries({
+  const template = Object.entries({
     ...TemplatePackageJson.devDependencies,
     ...TemplatePackageJson.workspaces.catalog,
-    ...D1PackageJson.workspaces.catalog,
+    ...GitHubActionsPackageJson.devDependencies,
+    ...GitHubActionsPackageJson.workspaces.catalog,
+    ...NeonPackageJson.devDependencies,
     ...NeonPackageJson.workspaces.catalog,
   });
 
-  for (const [name, version] of pinned) {
+  for (const [name, version] of template) {
     if (version !== "catalog:") {
       assert.strictEqual(version, root.get(name), name);
     }

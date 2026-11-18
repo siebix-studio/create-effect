@@ -1,13 +1,13 @@
-import * as Cloudflare from "@alchemy.run/cloudflare";
 import * as Test from "@alchemy.run/test/Vitest";
 import { Effect } from "effect";
 import { HttpClient } from "effect/http";
 import { expect } from "vitest";
 
 import Stack from "../alchemy.run.ts";
+import { providers } from "../providers.ts";
 
 const { test, beforeAll, afterAll, deploy, destroy } = Test.make({
-  providers: Cloudflare.providers(),
+  providers,
   dev: true,
 });
 

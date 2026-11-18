@@ -33,10 +33,12 @@
         // Effect diagnostics are reported by Oxlint; keep the LSP for refactors,
         // quickinfo and completions so they don't show up twice.
         "diagnostics": false,
-        // The CLI, file system, path and process modules, the Bun platform and the test helpers are
-        // marked unstable; we build on them knowingly.
+        // The CLI, HTTP, file system, path and process modules, the Bun platform and the test helpers
+        // are marked unstable; we build on them knowingly.
         "allowedUnstableApis": [
           "effect/cli",
+          "effect/http",
+          "effect/http-api",
           "effect/FileSystem",
           "effect/Path",
           "effect/PlatformError",
@@ -49,6 +51,6 @@
       }
     ]
   },
-  // The Alchemy stacks at the root. Each app in apps/ has its own tsconfig.
-  "include": ["*.ts", "stacks"]
+  // The Alchemy stacks at the root and their test. Each app in apps/ has its own tsconfig.
+  "include": ["*.ts", "stacks", "test"]
 }

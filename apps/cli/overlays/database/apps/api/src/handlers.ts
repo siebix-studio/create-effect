@@ -19,7 +19,11 @@ export const GreetingsLive = HttpApiBuilder.group(
       greet: ({ params }) =>
         greetings
           .record(params.name)
-          .pipe(Effect.as(greet(params.name)), Effect.orDie),
+          .pipe(
+            Effect.as(greet(params.name)),
+            Effect.orDie,
+            Effect.withSpan("greet", { attributes: { name: params.name } })
+          ),
       listRecent: () =>
         greetings.listRecent.pipe(
           Effect.map((names) => names.map(greet)),

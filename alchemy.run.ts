@@ -7,27 +7,34 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import { TeamAccess } from "./access";
-import { stageDomain } from "./domain";
+import Api from "./apps/api/src/worker";
+import { isLocal, stageDomain } from "./domain";
 import { EffectScaffoldState } from "./state";
 
 export const Web = Cloudflare.Website.Foldkit(
   "Web",
   Effect.gen(function* () {
     const { stage } = yield* Alchemy.Stack;
+    const api = yield* Api;
 
-    const rootDir = `${import.meta.dirname}/apps/web`;
+    const props = {
+      rootDir: `${import.meta.dirname}/apps/web`,
+      env: { VITE_API_URL: api.url.as<string>() },
+      // The API takes the default dev port.
+      dev: { port: 5173 },
+    };
 
-    // `alchemy dev` (`dev_<user>`) runs locally, so there's no deployed site to gate.
-    if (stage.startsWith("dev_")) {
-      return { rootDir };
+    // A local stage has no deployed site to gate.
+    if (isLocal(stage)) {
+      return props;
     }
 
     // Only the custom domain serves prod; the workers.dev URL would be a duplicate for search engines.
     if (stage === "prod") {
-      return { rootDir, domain: stageDomain(stage), workersDev: false };
+      return { ...props, domain: stageDomain(stage), workersDev: false };
     }
 
-    return { rootDir, domain: stageDomain(stage), access: TeamAccess };
+    return { ...props, domain: stageDomain(stage), access: TeamAccess };
   })
 );
 
@@ -52,6 +59,7 @@ export default Alchemy.Stack(
   Effect.gen(function* () {
     const { stage } = yield* Alchemy.Stack;
 
+    const api = yield* Api;
     const web = yield* Web;
     const github = yield* GitHub.GitHubEnv;
 
@@ -67,6 +75,7 @@ export default Alchemy.Stack(
           | | |
           | --- | --- |
           | Site | ${web.url} |
+          | API | ${api.url} |
           | Commit | ${commit} |
 
           Stage \`${stage}\`, visible to @siebix.com addresses. Destroyed when this pull request closes.
@@ -77,6 +86,6 @@ export default Alchemy.Stack(
       });
     }
 
-    return { url: web.url.as<string>() };
+    return { url: web.url.as<string>(), api: api.url.as<string>() };
   })
 );

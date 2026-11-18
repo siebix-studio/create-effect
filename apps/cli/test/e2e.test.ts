@@ -6,8 +6,13 @@ import path from "node:path";
 
 import { afterAll, expect, test } from "vitest";
 
+// Test projects are not counted.
 const exec = (command: string, args: readonly string[], cwd: string) =>
-  execFileSync(command, args, { cwd, stdio: "pipe" });
+  execFileSync(command, args, {
+    cwd,
+    stdio: "pipe",
+    env: { ...process.env, DO_NOT_TRACK: "1" },
+  });
 
 const BIN = path.join(import.meta.dirname, "../src/bin.ts");
 
@@ -19,23 +24,29 @@ afterAll(async () => {
   await rm(workspace, { recursive: true, force: true });
 });
 
-const create = (name: string, args: readonly string[]) => {
-  exec("bun", [BIN, name, ...args], workspace);
+const create = (name: string, flags: readonly string[]) => {
+  exec("bun", [BIN, name, ...flags], workspace);
 
   const project = path.join(workspace, name);
   expect(existsSync(path.join(project, "bun.lock"))).toBe(true);
   expect(existsSync(path.join(project, ".git"))).toBe(true);
+  expect(existsSync(path.join(project, ".git/hooks/pre-commit"))).toBe(true);
+  expect(existsSync(path.join(project, ".vscode/settings.json"))).toBe(true);
 
   return project;
 };
 
+// The deploy workflow brings a stack file of its own and another alchemy.run.ts, and a database
+// another Worker and stack test, so each shape of the project is checked, and the two together.
 test.each([
-  ["without a database", "plain", []],
-  ["with a D1 database", "with-d1", ["--database", "d1"]],
+  { name: "my-app", flags: [] },
+  { name: "my-ci-app", flags: ["--github-actions"] },
+  { name: "my-d1-app", flags: ["--database", "d1"] },
+  { name: "my-ci-d1-app", flags: ["--database", "d1", "--github-actions"] },
 ])(
-  "a project generated %s installs and passes its own checks",
-  (_description, name, args) => {
-    const project = create(name, args);
+  "a project generated with $flags installs and passes its own checks",
+  ({ name, flags }) => {
+    const project = create(name, flags);
 
     exec("bun", ["run", "check"], project);
     exec("bun", ["run", "typecheck"], project);
@@ -49,7 +60,11 @@ test.each([
 test(
   "a project generated with a Neon database installs and passes its own checks",
   () => {
-    const project = create("with-neon", ["--database", "neon"]);
+    const project = create("my-neon-app", [
+      "--database",
+      "neon",
+      "--github-actions",
+    ]);
 
     exec("bun", ["run", "check"], project);
     exec("bun", ["run", "typecheck"], project);

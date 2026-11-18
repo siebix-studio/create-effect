@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@foldkit/devtools": "catalog:",
+    "@foldkit/devtools-mcp": "catalog:",
     "@foldkit/oxlint-plugin": "catalog:",
     "@foldkit/vite-plugin": "catalog:",
     "@tailwindcss/vite": "catalog:",

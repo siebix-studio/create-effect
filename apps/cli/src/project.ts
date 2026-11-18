@@ -1,5 +1,6 @@
 import * as CliError from "effect/cli/CliError";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
@@ -48,6 +49,45 @@ export const fromDirectory = Effect.fn("Project.fromDirectory")(function* (
 ) {
   const path = yield* Path.Path;
   const name = yield* parseName(path.basename(directory));
+
+  return Project.make({ name, directory });
+});
+
+export class NotAProject extends Schema.TaggedError<
+  NotAProject,
+  { readonly brand: unique symbol }
+>()("NotAProject", { directory: Schema.String }) {
+  override get [CliError.userMessage]() {
+    return `${this.directory} is not a project made with create-effect: it needs a package.json with a name and an alchemy.run.ts.`;
+  }
+}
+
+const Manifest = Schema.fromJsonString(Schema.Struct({ name: Schema.String }));
+
+/** The project in a directory that was created earlier. Its name is the one in `package.json`. */
+export const fromExisting = Effect.fn("Project.fromExisting")(function* (
+  directory: string
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const notAProject = new NotAProject({ directory });
+
+  const hasStack = yield* fs
+    .exists(path.join(directory, "alchemy.run.ts"))
+    .pipe(Effect.mapError(() => notAProject));
+
+  if (!hasStack) {
+    return yield* notAProject;
+  }
+
+  const manifest = yield* fs
+    .readFileString(path.join(directory, "package.json"))
+    .pipe(
+      Effect.flatMap(Schema.decodeEffect(Manifest)),
+      Effect.mapError(() => notAProject)
+    );
+
+  const name = yield* parseName(manifest.name);
 
   return Project.make({ name, directory });
 });

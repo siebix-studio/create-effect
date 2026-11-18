@@ -11,9 +11,10 @@ export default class Api extends Cloudflare.Worker<Api>()(
   {
     main: import.meta.url,
     // The Postgres driver opens its socket through Node's `net` and `tls` modules.
-    compatibility: { flags: ["nodejs_compat"] },
+    compatibility: { date: "2026-08-25", flags: ["nodejs_compat"] },
   },
   Effect.gen(function* () {
+    // Binding the connection is also what puts it, and the Neon project behind it, in the stack.
     const hyperdrive = yield* Cloudflare.Hyperdrive.Connect(Hyperdrive);
 
     return {
@@ -23,5 +24,12 @@ export default class Api extends Cloudflare.Worker<Api>()(
         )
       ),
     };
-  }).pipe(Effect.provide(Cloudflare.Hyperdrive.ConnectBinding))
+  }).pipe(
+    Effect.provide(
+      Layer.mergeAll(
+        Cloudflare.Hyperdrive.ConnectBinding,
+        Cloudflare.Telemetry()
+      )
+    )
+  )
 ) {}

@@ -8,8 +8,12 @@ import { HttpLive } from "./http.ts";
 
 export default class Api extends Cloudflare.Worker<Api>()(
   "Api",
-  { main: import.meta.url },
+  {
+    main: import.meta.url,
+    compatibility: { date: "2026-08-25" },
+  },
   Effect.gen(function* () {
+    // Binding the database is also what puts it in the stack.
     const d1 = yield* Cloudflare.D1.QueryDatabase(Database);
 
     return {
@@ -17,5 +21,9 @@ export default class Api extends Cloudflare.Worker<Api>()(
         HttpLive.pipe(Layer.provide(SQL.D1Layer(d1)))
       ),
     };
-  }).pipe(Effect.provide(Cloudflare.D1.QueryDatabaseBinding))
+  }).pipe(
+    Effect.provide(
+      Layer.mergeAll(Cloudflare.D1.QueryDatabaseBinding, Cloudflare.Telemetry())
+    )
+  )
 ) {}

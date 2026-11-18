@@ -15,11 +15,14 @@ import * as Schema from "effect/Schema";
 import * as Terminal from "effect/Terminal";
 import * as TestConsole from "effect/testing/TestConsole";
 
+import PackageJson from "../package.json" with { type: "json" };
 import { command } from "../src/cli.ts";
 import * as Git from "../src/git.ts";
 import * as PackageManager from "../src/package-manager.ts";
 import * as Process from "../src/process.ts";
+import * as ProjectRecord from "../src/project-record.ts";
 import * as Project from "../src/project.ts";
+import * as Telemetry from "../src/telemetry.ts";
 
 const TestLayer = Layer.mergeAll(BunServices.layer, TestConsole.layer);
 
@@ -28,9 +31,15 @@ const run = Command.runWith(command, { version: "0.0.0" });
 const unavailable = (program: string) =>
   new Process.CommandUnavailable({ command: program, cause: "not found" });
 
+const silent = Telemetry.Service.of({
+  enabled: false,
+  record: () => Effect.void,
+});
+
 const stepLayers = (
   steps: Ref.Ref<readonly string[]>,
-  failing: readonly string[] = []
+  failing: readonly string[] = [],
+  telemetry: Telemetry.Interface = silent
 ) => {
   const step = (name: string) =>
     failing.includes(name)
@@ -48,9 +57,30 @@ const stepLayers = (
     Layer.succeed(
       PackageManager.Service,
       PackageManager.Service.of({ install: () => step("install") })
-    )
+    ),
+    Layer.succeed(Telemetry.Service, telemetry)
   );
 };
+
+/** What the command reported, also when it failed. */
+const reporting = Effect.fn("Test.reporting")(function* (
+  args: readonly string[]
+) {
+  const steps = yield* Ref.make<readonly string[]>([]);
+  const reported = yield* Ref.make<readonly Telemetry.Event[]>([]);
+
+  const telemetry = Telemetry.Service.of({
+    enabled: true,
+    record: (event) => Ref.update(reported, (events) => [...events, event]),
+  });
+
+  yield* run(args).pipe(
+    Effect.provide(stepLayers(steps, [], telemetry)),
+    Effect.ignore
+  );
+
+  return yield* Ref.get(reported);
+});
 
 const scaffold = Effect.fn("Test.scaffold")(function* (
   args: readonly string[],
@@ -159,6 +189,7 @@ describe("create-effect", () => {
         [...files],
         [
           ".gitignore",
+          ".mcp.json",
           "package.json",
           "alchemy.run.ts",
           "apps/api/src/worker.ts",
@@ -167,6 +198,8 @@ describe("create-effect", () => {
         ]
       );
       assert.notInclude(files, "gitignore");
+      assert.notInclude(files, ".github/workflows/deploy.yml");
+      assert.notInclude(files, "stacks/github.ts");
 
       const packageJson = yield* fs.readFileString(
         path.join(directory, "package.json")
@@ -189,6 +222,81 @@ describe("create-effect", () => {
         contents.some((content) => content.includes("{{")),
         "a placeholder was left unfilled"
       );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("adds the deploy workflow with --github-actions", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+
+      const read = (file: string) =>
+        fs.readFileString(path.join(directory, file));
+
+      yield* scaffold([directory, "--github-actions"]);
+
+      const files = yield* listFiles(directory);
+      assert.includeMembers(
+        [...files],
+        [".github/workflows/deploy.yml", "stacks/github.ts", "alchemy.run.ts"]
+      );
+
+      // What the files should hold is read from their sources, so this test follows the
+      // template's wording instead of repeating it.
+      const source = (file: string) =>
+        fs
+          .readFileString(path.join(import.meta.dirname, "..", file))
+          .pipe(
+            Effect.map((content) =>
+              content
+                .replaceAll("{{name}}", "my-app")
+                .replaceAll("{{pascalName}}", "MyApp")
+            )
+          );
+
+      const overlay = "overlays/github-actions";
+
+      // A file of the overlay replaces the template's.
+      assert.strictEqual(
+        yield* read("alchemy.run.ts"),
+        yield* source(`${overlay}/alchemy.run.ts`)
+      );
+      assert.notStrictEqual(
+        yield* source(`${overlay}/alchemy.run.ts`),
+        yield* source("template/alchemy.run.ts")
+      );
+
+      // Its package.json is merged into the template's, and dependencies stay sorted.
+      const packageJson = yield* read("package.json");
+      assert.include(packageJson, '"name": "my-app"');
+      assert.include(
+        packageJson,
+        [
+          '    "@alchemy.run/frontend-frameworks": "catalog:",',
+          '    "@alchemy.run/github": "catalog:",',
+          '    "@alchemy.run/test": "catalog:",',
+        ].join("\n")
+      );
+      assert.match(packageJson, /"@alchemy\.run\/github": "\^/u);
+
+      // Its Markdown goes after the template's.
+      for (const file of ["README.md", "AGENTS.md"]) {
+        assert.strictEqual(
+          yield* read(file),
+          `${yield* source(`template/${file}`)}\n${yield* source(`${overlay}/${file}`)}`
+        );
+      }
+
+      const contents = yield* Effect.forEach(files, read);
+      assert.isFalse(
+        // Not a bare `{{`: the workflow is full of `${{ … }}` expressions.
+        contents.some((content) => /\{\{\w+\}\}/u.test(content)),
+        "a placeholder was left unfilled"
+      );
+
+      const output = (yield* TestConsole.logLines).join("\n");
+      assert.include(output, "stacks/github.ts");
     }).pipe(Effect.provide(TestLayer))
   );
 
@@ -298,6 +406,360 @@ describe("create-effect", () => {
   );
 });
 
+describe("the project record", () => {
+  const features = Effect.fn("Test.features")(function* (directory: string) {
+    const record = yield* ProjectRecord.read(directory);
+
+    return Option.map(record, ({ features: recorded }) => recorded);
+  });
+
+  it.effect("says which features a new project has", () =>
+    Effect.gen(function* () {
+      const plain = yield* projectDirectory("my-app");
+      const deployed = yield* projectDirectory("my-app");
+
+      yield* scaffold([plain, "--no-install", "--no-git"]);
+      yield* scaffold([
+        deployed,
+        "--no-install",
+        "--no-git",
+        "--github-actions",
+      ]);
+
+      assert.deepStrictEqual(yield* features(plain), Option.some([]));
+      assert.deepStrictEqual(
+        yield* features(deployed),
+        Option.some(["github-actions"])
+      );
+
+      const both = yield* projectDirectory("my-app");
+      yield* scaffold([
+        both,
+        "--no-install",
+        "--no-git",
+        "--github-actions",
+        "--database",
+        "d1",
+      ]);
+
+      assert.deepStrictEqual(
+        yield* features(both),
+        Option.some(["d1", "github-actions"])
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("stops add when the project already has the feature", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+      yield* scaffold([
+        directory,
+        "--github-actions",
+        "--no-install",
+        "--no-git",
+      ]);
+
+      const steps = yield* scaffold([
+        "add",
+        "github-actions",
+        "--directory",
+        directory,
+      ]);
+
+      assert.deepStrictEqual(steps, []);
+      assert.include(
+        (yield* TestConsole.logLines).join("\n"),
+        "already has github-actions"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("is written by add for a project that has none", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+      yield* scaffold([directory, "--no-install", "--no-git"]);
+      yield* fs.remove(path.join(directory, ProjectRecord.FILE));
+
+      yield* scaffold(["add", "github-actions", "--directory", directory]);
+
+      assert.deepStrictEqual(
+        yield* features(directory),
+        Option.some(["github-actions"])
+      );
+      assert.isTrue(
+        yield* fs.exists(path.join(directory, ".github/workflows/deploy.yml"))
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+});
+
+describe("add", () => {
+  const readAll = Effect.fn("Test.readAll")(function* (directory: string) {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const files = yield* listFiles(directory);
+
+    const contents = yield* Effect.forEach(files, (file) =>
+      fs.readFileString(path.join(directory, file))
+    );
+
+    return Object.fromEntries(
+      files.map((file, index) => [file, contents[index]])
+    );
+  });
+
+  it.effect.each([
+    { feature: "github-actions", flags: ["--github-actions"] },
+    { feature: "d1", flags: ["--database", "d1"] },
+    { feature: "neon", flags: ["--database", "neon"] },
+  ])(
+    "turns a project into the one $flags would have created",
+    ({ feature, flags }) =>
+      Effect.gen(function* () {
+        const created = yield* projectDirectory("my-app");
+        const added = yield* projectDirectory("my-app");
+        yield* scaffold([created, ...flags, "--no-install", "--no-git"]);
+        yield* scaffold([added, "--no-install", "--no-git"]);
+
+        const steps = yield* scaffold(["add", feature, "--directory", added]);
+
+        assert.deepStrictEqual(steps, ["install"]);
+        assert.deepStrictEqual(yield* readAll(added), yield* readAll(created));
+        assert.deepStrictEqual(yield* TestConsole.errorLines, []);
+      }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("adds a database to a project that has the deploy workflow", () =>
+    Effect.gen(function* () {
+      const created = yield* projectDirectory("my-app");
+      const added = yield* projectDirectory("my-app");
+      const flags = ["--no-install", "--no-git", "--github-actions"];
+      yield* scaffold([created, ...flags, "--database", "neon"]);
+      yield* scaffold([added, ...flags]);
+
+      yield* scaffold(["add", "neon", "--directory", added, "--no-install"]);
+
+      // Each section, feature and catalog entry lands when it is added, so their order differs.
+      const ordered = new Set([
+        "AGENTS.md",
+        "README.md",
+        "package.json",
+        ProjectRecord.FILE,
+      ]);
+
+      const unordered = (files: Record<string, string | undefined>) =>
+        Object.fromEntries(
+          Object.entries(files).filter(([file]) => !ordered.has(file))
+        );
+
+      assert.deepStrictEqual(
+        unordered(yield* readAll(added)),
+        unordered(yield* readAll(created))
+      );
+      assert.deepStrictEqual(yield* TestConsole.errorLines, []);
+      assert.include(
+        (yield* TestConsole.logLines).join("\n"),
+        "The deploy workflow does not know about the database yet"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("refuses a second database", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+      yield* scaffold([
+        directory,
+        "--database",
+        "d1",
+        "--no-install",
+        "--no-git",
+      ]);
+      const before = yield* readAll(directory);
+
+      const error = yield* Effect.flip(
+        scaffold(["add", "neon", "--directory", directory])
+      );
+
+      assert.strictEqual(error._tag, "AlreadyPresent");
+      assert.deepStrictEqual(yield* readAll(directory), before);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("refuses Neon in a project whose stack has no providers file", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+      yield* scaffold([directory, "--no-install", "--no-git"]);
+      yield* fs.remove(path.join(directory, "providers.ts"));
+      const before = yield* readAll(directory);
+
+      const error = yield* Effect.flip(
+        scaffold(["add", "neon", "--directory", directory])
+      );
+
+      assert.strictEqual(error._tag, "MissingTemplateFile");
+      assert.deepStrictEqual(yield* readAll(directory), before);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("changes nothing the second time", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+      const add = ["add", "github-actions", "--directory", directory];
+      yield* scaffold([directory, "--no-install", "--no-git"]);
+      yield* scaffold([...add, "--no-install"]);
+      const once = yield* readAll(directory);
+
+      const steps = yield* scaffold([...add, "--no-install"]);
+
+      assert.deepStrictEqual(steps, []);
+      assert.deepStrictEqual(yield* readAll(directory), once);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("leaves a file the project's owner changed", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+      const stack = path.join(directory, "alchemy.run.ts");
+      yield* scaffold([directory, "--no-install", "--no-git"]);
+      const changed = `${yield* fs.readFileString(stack)}// mine\n`;
+      yield* fs.writeFileString(stack, changed);
+
+      yield* scaffold(["add", "github-actions", "--directory", directory]);
+
+      assert.strictEqual(yield* fs.readFileString(stack), changed);
+      assert.isTrue(yield* fs.exists(path.join(directory, "stacks/github.ts")));
+      assert.include(
+        (yield* TestConsole.errorLines).join("\n"),
+        "Left alchemy.run.ts as it is"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("refuses a directory that is not a project", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const directory = yield* projectDirectory("my-app");
+      yield* fs.makeDirectory(directory);
+
+      const error = yield* Effect.flip(
+        scaffold(["add", "github-actions", "--directory", directory])
+      );
+
+      assert.strictEqual(error._tag, "NotAProject");
+      assert.deepStrictEqual(yield* fs.readDirectory(directory), []);
+    }).pipe(Effect.provide(TestLayer))
+  );
+});
+
+describe("telemetry", () => {
+  const environment = {
+    cliVersion: PackageJson.version,
+    platform: process.platform,
+  };
+
+  it.effect("reports what a project was created with", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+
+      const reported = yield* reporting([
+        directory,
+        "--no-install",
+        "--github-actions",
+      ]);
+
+      assert.deepStrictEqual(reported, [
+        {
+          command: "create",
+          features: ["github-actions"],
+          install: false,
+          git: true,
+          interactive: false,
+          ...environment,
+        },
+      ]);
+      assert.include(
+        (yield* TestConsole.logLines).join("\n"),
+        "DO_NOT_TRACK=1"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("reports that an answer came from a prompt", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+
+      const reported = yield* reporting([
+        directory,
+        "--no-install",
+        "--no-git",
+      ]).pipe(Effect.provide(answering([enter, key("n")])));
+
+      assert.deepStrictEqual(reported, [
+        {
+          command: "create",
+          features: [],
+          install: false,
+          git: false,
+          interactive: true,
+          ...environment,
+        },
+      ]);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("reports a feature that add brought to a project", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+      yield* scaffold([directory, "--no-install", "--no-git"]);
+
+      const add = ["add", "github-actions", "--directory", directory];
+
+      assert.deepStrictEqual(yield* reporting([...add, "--no-install"]), [
+        {
+          command: "add",
+          features: ["github-actions"],
+          install: false,
+          ...environment,
+        },
+      ]);
+
+      // Nothing is left to add.
+      assert.deepStrictEqual(yield* reporting(add), []);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("reports nothing when no project was created", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+      yield* fs.makeDirectory(directory, { recursive: true });
+      yield* fs.writeFileString(path.join(directory, "notes.txt"), "mine");
+
+      assert.deepStrictEqual(yield* reporting([directory]), []);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("does not mention counting to someone who opted out", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([directory]);
+
+      assert.notInclude(
+        (yield* TestConsole.logLines).join("\n"),
+        "DO_NOT_TRACK"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+});
+
 describe("questions", () => {
   it.effect("asks for whatever the command line left open", () =>
     Effect.gen(function* () {
@@ -307,7 +769,15 @@ describe("questions", () => {
 
       const steps = yield* scaffold([]).pipe(
         Effect.provide(
-          answering([...typed(directory), enter, down, enter, enter, key("n")])
+          answering([
+            ...typed(directory),
+            enter,
+            down,
+            enter,
+            enter,
+            key("n"),
+            enter,
+          ])
         )
       );
 
@@ -319,7 +789,13 @@ describe("questions", () => {
 
       const output = (yield* TestConsole.logLines).join("\n");
       assert.include(output, "Run it again without the questions:");
-      assert.include(output, "--database d1 --install --no-git");
+      assert.include(
+        output,
+        "--database d1 --install --no-git --no-github-actions"
+      );
+      assert.isFalse(
+        yield* fs.exists(path.join(directory, ".github/workflows/deploy.yml"))
+      );
     }).pipe(Effect.provide(TestLayer))
   );
 
@@ -332,10 +808,36 @@ describe("questions", () => {
         "--database",
         "none",
         "--no-git",
-      ]).pipe(Effect.provide(answering([key("y")])));
+      ]).pipe(Effect.provide(answering([key("y"), enter])));
 
       assert.deepStrictEqual(steps, ["install"]);
     }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect(
+    "writes the deploy workflow when its question is answered yes",
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const directory = yield* projectDirectory("my-app");
+
+        yield* scaffold([
+          directory,
+          "--database",
+          "none",
+          "--no-install",
+          "--no-git",
+        ]).pipe(Effect.provide(answering([key("y")])));
+
+        assert.isTrue(
+          yield* fs.exists(path.join(directory, ".github/workflows/deploy.yml"))
+        );
+        assert.include(
+          (yield* TestConsole.logLines).join("\n"),
+          "--no-install --no-git --github-actions"
+        );
+      }).pipe(Effect.provide(TestLayer))
   );
 
   it.effect("asks nothing with --yes", () =>
@@ -369,9 +871,12 @@ describe("questions", () => {
       assert.strictEqual(declined._tag, "DirectoryNotEmpty");
       assert.deepStrictEqual(yield* fs.readDirectory(directory), ["notes.txt"]);
 
-      yield* scaffold([directory, "--no-install", "--no-git"]).pipe(
-        Effect.provide(answering([key("y"), enter]))
-      );
+      yield* scaffold([
+        directory,
+        "--no-install",
+        "--no-git",
+        "--no-github-actions",
+      ]).pipe(Effect.provide(answering([key("y"), enter])));
       assert.isTrue(yield* fs.exists(path.join(directory, "package.json")));
       assert.include((yield* TestConsole.logLines).join("\n"), "--force");
     }).pipe(Effect.provide(TestLayer))
@@ -395,7 +900,7 @@ describe("questions", () => {
 describe("databases", () => {
   const Dependencies = Schema.Record(Schema.String, Schema.String);
 
-  const PackageJson = Schema.fromJsonString(
+  const Manifest = Schema.fromJsonString(
     Schema.Struct({
       name: Schema.String,
       dependencies: Schema.optionalKey(Dependencies),
@@ -409,9 +914,7 @@ describe("databases", () => {
   ) {
     const fs = yield* FileSystem.FileSystem;
 
-    return yield* Schema.decodeEffect(PackageJson)(
-      yield* fs.readFileString(file)
-    );
+    return yield* Schema.decodeEffect(Manifest)(yield* fs.readFileString(file));
   });
 
   it.effect("adds none unless asked", () =>
@@ -454,7 +957,6 @@ describe("databases", () => {
       );
 
       assert.include(stack, 'workerName: "my-app-state"');
-      assert.include(stack, "yield* Database;");
 
       const contents = yield* Effect.forEach(files, (file) =>
         fs.readFileString(path.join(directory, file))

@@ -8,9 +8,13 @@
         "@alchemy.run/cloudflare": "catalog:",
         "@alchemy.run/frontend-frameworks": "catalog:",
         "@alchemy.run/github": "catalog:",
+        "@alchemy.run/test": "catalog:",
         "@changesets/changelog-github": "1.0.1",
         "@changesets/cli": "3.0.3",
+        "@effect/platform-bun": "catalog:",
+        "@effect/platform-node": "catalog:",
         "@effect/tsgo": "0.70.0",
+        "@effect/vitest": "catalog:",
         "@foldkit/oxlint-plugin": "catalog:",
         "@types/bun": "latest",
         "alchemy": "catalog:",
@@ -21,11 +25,25 @@
         "oxlint-tsgolint": "7.0.2007",
         "typescript": "7.0.2",
         "ultracite": "8.2.1",
+        "vitest": "catalog:",
+      },
+    },
+    "apps/api": {
+      "name": "@siebix/create-effect-api",
+      "dependencies": {
+        "@alchemy.run/cloudflare": "catalog:",
+        "alchemy": "catalog:",
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@alchemy.run/test": "catalog:",
+        "@effect/vitest": "catalog:",
+        "vitest": "catalog:",
       },
     },
     "apps/cli": {
       "name": "@siebix/create-effect",
-      "version": "0.1.1",
+      "version": "0.3.0",
       "bin": {
         "create-effect": "./src/bin.ts",
       },
@@ -77,7 +95,6 @@
     "@effect/platform-browser": "^4.1.4",
     "@effect/platform-bun": "^4.1.4",
     "@effect/platform-node": "^4.1.4",
-    "@effect/sql-d1": "^4.1.4",
     "@effect/sql-pg": "^4.1.4",
     "@effect/vitest": "^4.1.4",
     "@foldkit/devtools": "0.170.0",
@@ -123,6 +140,8 @@
     "@alchemy.run/sigil": ["@alchemy.run/sigil@0.1.0-alpha.4", "", { "peerDependencies": { "@types/react": ">=19.2.0", "react-devtools-core": ">=6.1.2" }, "optionalPeers": ["@types/react", "react-devtools-core"] }, "sha512-d6Uo16C2P6Wk7TNoYt4qzjjNGyjsrJLjq8bBotl86Nmcp/U6+R34/n4CZomqFERF2wMinut2DBqWNeUQPTBtFQ=="],
 
     "@alchemy.run/sql": ["@alchemy.run/sql@2.0.0-beta.87", "", { "peerDependencies": { "@effect/sql-libsql": "^4.1.4", "@effect/sql-mysql2": "^4.1.4", "@effect/sql-pg": "^4.1.4", "alchemy": "2.0.0-beta.87", "effect": "^4.1.4", "mysql2": "^3.24.2", "pg": "^8.22.0" }, "optionalPeers": ["@effect/sql-libsql", "@effect/sql-mysql2", "@effect/sql-pg", "mysql2", "pg"] }, "sha512-vuMfb1hMRe1uZ0sYJFdDDLt4HGY/h/2U5kWIJk/tCG+pBwrE0ipNhdEgyGGuw0LSzDNFUI44rc995LBpg9KRFw=="],
+
+    "@alchemy.run/test": ["@alchemy.run/test@2.0.0-beta.87", "", { "dependencies": { "@effect/platform-bun": "^4.1.4" }, "peerDependencies": { "@effect/vitest": "^4.1.4", "@opentui/core": "^0.6.6", "alchemy": "2.0.0-beta.87", "effect": "^4.1.4", "vitest": "^5.0.4" }, "optionalPeers": ["@effect/vitest", "@opentui/core", "alchemy", "vitest"], "bin": { "alchemy-test": "./bin/alchemy-test.ts" } }, "sha512-DC4K09kM+wwr7QuAe1zuYjFKAKQaHijgbcXMmLbP88uWKVLrJPDCgAN6R1lfhR78O9//oYvCdHLV52wsdOjYZA=="],
 
     "@babel/helper-string-parser": ["@babel/helper-string-parser@7.29.14", "", {}, "sha512-CXvKMFvM80ihI7Vox9jb+kQjnyjESQNPM+vB7U0Zz6TWuZA+Z/FL0QPMH300h33qJtIx+REeBhXqWOPW48TcAQ=="],
 
@@ -569,6 +588,8 @@
     "@shuding/opentype.js": ["@shuding/opentype.js@1.4.0-beta.0", "", { "dependencies": { "fflate": "^0.7.3", "string.prototype.codepointat": "^0.2.1" }, "bin": { "ot": "bin/ot" } }, "sha512-3NgmNyH3l/Hv6EvsWJbsvpcpUba6R8IREQ83nH83cyakCw7uM1arZKNfHwv1Wz6jgqrF/j4x5ELvR6PnK9nTcA=="],
 
     "@siebix/create-effect": ["@siebix/create-effect@workspace:apps/cli"],
+
+    "@siebix/create-effect-api": ["@siebix/create-effect-api@workspace:apps/api"],
 
     "@siebix/create-effect-web": ["@siebix/create-effect-web@workspace:apps/web"],
 

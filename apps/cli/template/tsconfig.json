@@ -28,15 +28,18 @@
         // Effect diagnostics are reported by Oxlint; keep the LSP for refactors,
         // quickinfo and completions so they don't show up twice.
         "diagnostics": false,
-        // Effect's HTTP modules and test helpers are marked unstable; this app builds on them knowingly.
+        // Effect's HTTP and SQL modules and test helpers are marked unstable; this app builds on them
+        // knowingly.
         "allowedUnstableApis": [
           "@effect/vitest",
           "effect/http",
-          "effect/http-api"
+          "effect/http-api",
+          "effect/sql"
         ]
       }
     ]
   },
-  // The Alchemy stack at the root. Each app and package has its own tsconfig.
-  "include": ["*.ts", "test"]
+  // The Alchemy stack at the root, and any further stacks in stacks/. Each app and package has
+  // its own tsconfig.
+  "include": ["*.ts", "stacks", "test"]
 }
