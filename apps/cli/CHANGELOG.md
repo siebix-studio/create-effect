@@ -1,5 +1,17 @@
 # @siebix/create-effect
 
+## 0.3.0
+
+### Minor Changes
+
+- [#10](https://github.com/siebix-studio/create-effect/pull/10) [`e94d7e6`](https://github.com/siebix-studio/create-effect/commit/e94d7e622f9981f891edd16b4250391c425d903c) Thanks [@Siebe-Studio](https://github.com/Siebe-Studio)! - New `add` command: `bunx @siebix/create-effect add github-actions`, run inside a project created earlier, adds the deploy workflow that `--github-actions` would have written. Files changed since the project was created are left as they are. Every project now has a `create-effect.json` that records which features it has, so `add` knows when there is nothing left to add.
+
+- [#10](https://github.com/siebix-studio/create-effect/pull/10) [`5892c3e`](https://github.com/siebix-studio/create-effect/commit/5892c3e81480f6a27db8fb73d6c9f0c74e2910b6) Thanks [@Siebe-Studio](https://github.com/Siebe-Studio)! - The API Worker of a new project now provides `Cloudflare.Telemetry()`: deployed stages get Workers Logs and Traces in the Cloudflare dashboard, with Effect spans in each request's trace. The Worker pins compatibility date `2026-08-25`, which native tracing needs.
+
+- [#10](https://github.com/siebix-studio/create-effect/pull/10) [`e94d7e6`](https://github.com/siebix-studio/create-effect/commit/e94d7e622f9981f891edd16b4250391c425d903c) Thanks [@Siebe-Studio](https://github.com/Siebe-Studio)! - A new project now has an `.mcp.json` for the Foldkit DevTools MCP server, so coding agents can inspect the running website: its Model, its Message history and past states.
+
+- [#10](https://github.com/siebix-studio/create-effect/pull/10) [`e94d7e6`](https://github.com/siebix-studio/create-effect/commit/e94d7e622f9981f891edd16b4250391c425d903c) Thanks [@Siebe-Studio](https://github.com/Siebe-Studio)! - New question, and its `--github-actions` flag: answer yes (the default is no) and the project gets a GitHub Actions workflow that checks every change, deploys `main` to the `prod` stage and gives each pull request its own preview stage with a comment linking to it. It comes with `stacks/github.ts`, which mints the scoped Cloudflare token the workflow needs and stores it as repository secrets.
+
 ## 0.2.0
 
 ### Minor Changes
