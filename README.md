@@ -15,10 +15,13 @@ The project it creates is a Bun workspace:
 | `apps/web` | A prerendered Foldkit website that calls the API through a typed client |
 | `alchemy.run.ts` | The stack that deploys both |
 
-Run without arguments, it asks for the project name, whether to install dependencies, whether to initialize git and whether to add a deploy workflow. Each question has a flag, and a flag skips its question:
+With a database, the API also gets a migration, a repository written in Effect SQL and an endpoint that reads back what it stored. D1 runs on your machine with the rest; Neon is a real Neon project, also in development.
+
+Run without arguments, it asks for the project name, which database to add, whether to install dependencies, whether to initialize git and whether to add a deploy workflow. Each question has a flag, and a flag skips its question:
 
 | Flag | What |
 | --- | --- |
+| `--database d1\|neon\|none` | Add a D1 database, a Neon Postgres database, or none (the default) |
 | `--install`, `--no-install` | Run `bun install`, or don't |
 | `--git`, `--no-git` | Create a git repository with a first commit, or don't |
 | `--github-actions`, `--no-github-actions` | Add a GitHub Actions workflow that deploys `main` and previews each pull request, or don't |
@@ -27,7 +30,7 @@ Run without arguments, it asks for the project name, whether to install dependen
 
 Where nothing can be asked (CI, a pipe) the defaults apply, and the name has to be given.
 
-`bunx @siebix/create-effect add github-actions`, run inside a project created earlier, adds what `--github-actions` would have written. It leaves files that were changed since as they are.
+`bunx @siebix/create-effect add github-actions`, run inside a project created earlier, adds what `--github-actions` would have written, and `add d1` or `add neon` adds a database to a project that has none. It leaves files that were changed since as they are.
 
 ## Telemetry
 
@@ -45,7 +48,7 @@ It never reports the project's name, a path, or anything that identifies the use
 | --- | --- |
 | `apps/cli` | The CLI (`@siebix/create-effect`, binary `create-effect`), built with `effect/cli` |
 | `apps/cli/template` | The project the CLI creates, copied as is with the project name filled in |
-| `apps/cli/overlays` | What a flag adds to that project: `github-actions` holds the deploy workflow |
+| `apps/cli/overlays` | What a flag adds to that project: `github-actions` holds the deploy workflow, and `database`, `d1` and `neon` a database |
 | `apps/web` | The website at [effect.siebix.com](https://effect.siebix.com), a prerendered Foldkit app |
 | `apps/api` | The API at `effect-api.siebix.com`: a Worker with one Durable Object that counts the CLI's runs |
 | `alchemy.run.ts` | The deploy stack for the website and the API |

@@ -1,6 +1,15 @@
 pre-commit:
   jobs:
+    # Lint skips these folders and fails when handed nothing else, so they are only formatted.
+    - run: bunx oxfmt {staged_files}
+      glob:
+        - "apps/cli/template/**"
+        - "apps/cli/overlays/**"
+      stage_fixed: true
     - run: bunx ultracite fix {staged_files}
+      exclude:
+        - "apps/cli/template/**"
+        - "apps/cli/overlays/**"
       glob:
         - "*.js"
         - "*.jsx"

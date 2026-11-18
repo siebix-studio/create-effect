@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@alchemy.run/neon": "catalog:",
+    "@alchemy.run/sql": "catalog:",
+    "@effect/sql-pg": "catalog:"
+  }
+}

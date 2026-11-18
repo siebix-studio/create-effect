@@ -3,6 +3,7 @@ import * as Alchemy from "alchemy";
 import { Effect, Layer } from "effect";
 
 import Api from "./apps/api/src/worker.ts";
+import { providers } from "./providers.ts";
 
 // Local stages (`alchemy dev`, the integration test) keep their state on disk and need no
 // Cloudflare account. Deployed stages share this project's own state store.
@@ -18,7 +19,7 @@ const state = Layer.unwrap(
 
 export default Alchemy.Stack(
   "{{pascalName}}",
-  { providers: Cloudflare.providers(), state },
+  { providers, state },
   Effect.gen(function* () {
     const api = yield* Api;
 

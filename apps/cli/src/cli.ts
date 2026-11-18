@@ -11,6 +11,7 @@ import * as Path from "effect/Path";
 
 import PackageJson from "../package.json" with { type: "json" };
 import * as Answers from "./answers.ts";
+import * as Database from "./database.ts";
 import * as Git from "./git.ts";
 import * as PackageManager from "./package-manager.ts";
 import * as ProjectRecord from "./project-record.ts";
@@ -29,13 +30,34 @@ const OVERLAY_NEXT_STEPS: Record<Template.Overlay, readonly string[]> = {
     "The deploy workflow needs Cloudflare credentials in GitHub. Create them once",
     'with `stacks/github.ts`; see "CI/CD" in README.md.',
   ],
+  d1: [
+    "The D1 database runs on your machine under `bun run dev` and `bun run test`;",
+    'see "Database" in README.md.',
+  ],
+  neon: [
+    "The database is a real Neon project, in development too. Before `bun run dev`,",
+    "store a Neon API key once with `bun alchemy profile edit --add Neon`;",
+    'see "Database" in README.md.',
+  ],
 };
+
+const DEPLOYING_A_DATABASE = [
+  "The deploy workflow does not know about the database yet. What it needs is at",
+  'the end of "Database" in README.md.',
+];
 
 const directory = Argument.Path("directory", { pathType: "directory" }).pipe(
   Argument.withDescription(
     "Where to create the project; its last segment is the project name. Asked for when omitted"
   ),
   Argument.optional
+);
+
+const database = Flag.Literals("database", Database.NAMES).pipe(
+  Flag.withDescription(
+    "Add a database: d1 (Cloudflare's SQLite), neon (Postgres) or none. Asked for when omitted"
+  ),
+  Flag.optional
 );
 
 const install = Flag.Boolean("install").pipe(
@@ -107,9 +129,10 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
   const relativeDirectory =
     path.relative(path.resolve(), project.directory) || ".";
 
-  const overlays: readonly Template.Overlay[] = answers.githubActions
-    ? ["github-actions"]
-    : [];
+  const overlays: readonly Template.Overlay[] = [
+    ...(answers.database === "none" ? [] : [answers.database]),
+    ...(answers.githubActions ? (["github-actions"] as const) : []),
+  ];
 
   yield* Template.write(project, { overlays });
 
@@ -170,9 +193,8 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
       "",
       "To deploy, connect Cloudflare once with `bun alchemy profile edit --add Cloudflare`,",
       "then run `bun run deploy`.",
-      ...(answers.githubActions
-        ? ["", ...OVERLAY_NEXT_STEPS["github-actions"]]
-        : []),
+      ...overlays.flatMap((overlay) => ["", ...OVERLAY_NEXT_STEPS[overlay]]),
+      ...(overlays.length > 1 ? ["", ...DEPLOYING_A_DATABASE] : []),
     ].join("\n")
   );
 
@@ -184,6 +206,7 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
         `  ${[
           `bunx ${PackageJson.name}`,
           relativeDirectory,
+          `--database ${answers.database}`,
           answers.install ? "--install" : "--no-install",
           answers.git ? "--git" : "--no-git",
           answers.githubActions ? "--github-actions" : "--no-github-actions",
@@ -202,7 +225,7 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
 
 const overlay = Argument.Literals("feature", Template.OVERLAYS).pipe(
   Argument.withDescription(
-    "What to add. github-actions: the workflow that deploys main and previews each pull request"
+    "What to add. github-actions: the workflow that deploys main and previews each pull request. d1 or neon: a database, where the project has none"
   )
 );
 
@@ -244,6 +267,8 @@ const add = Effect.fn("Cli.add")(function* (input: {
 
     return;
   }
+
+  yield* Database.checkRoom(project.name, features, input.overlay);
 
   const kept = yield* Template.add(project, input.overlay);
 
@@ -288,6 +313,10 @@ const add = Effect.fn("Cli.add")(function* (input: {
         ? []
         : ["Run `bun install` to get its dependencies.", ""]),
       ...OVERLAY_NEXT_STEPS[input.overlay],
+      ...(features.length > 0 &&
+      Database.among([...features, input.overlay]) !== undefined
+        ? ["", ...DEPLOYING_A_DATABASE]
+        : []),
     ].join("\n")
   );
 
@@ -311,6 +340,10 @@ const addCommand = Command.make("add", {
       command: `${commandPath.join(" ")} github-actions`,
       description: "Add the deploy workflow to the project in this directory",
     },
+    {
+      command: `${commandPath.join(" ")} d1`,
+      description: "Add a D1 database to it",
+    },
   ]),
   Command.withHandler(add)
 );
@@ -324,6 +357,7 @@ const addCommand = Command.make("add", {
  */
 export const command = Command.make("create-effect", {
   directory,
+  database,
   install,
   git,
   githubActions,
@@ -341,6 +375,10 @@ export const command = Command.make("create-effect", {
       {
         command: `${self} my-app --yes`,
         description: "Create ./my-app with every default",
+      },
+      {
+        command: `${self} my-app --database d1`,
+        description: "Create ./my-app with a D1 database",
       },
       {
         command: `${self} my-app --no-install --no-git`,

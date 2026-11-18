@@ -91,6 +91,8 @@ describe("view", () => {
       expect(role("heading", { name: "create-effect" })).toExist(),
       expect(text(INSTALL_COMMAND)).toExist(),
       expect(role("heading", { name: "One typed contract" })).toExist(),
+      expect(role("heading", { name: "A database if you want one" })).toExist(),
+      expect(text("? Add a database? › D1", { exact: false })).toExist(),
       expect(role("link", { name: "View the source on GitHub" })).toExist(),
       expect(role("heading", { name: "How it is used" })).toBeAbsent()
     );

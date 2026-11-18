@@ -5,6 +5,7 @@ import * as Output from "alchemy/Output";
 import { Config, Effect, Layer } from "effect";
 
 import Api from "./apps/api/src/worker.ts";
+import { providers } from "./providers.ts";
 
 // Local stages (`alchemy dev`, the integration test) keep their state on disk and need no
 // Cloudflare account. Deployed stages share this project's own state store.
@@ -20,19 +21,19 @@ const state = Layer.unwrap(
 
 // GitHub is only used for the comment on pull request previews, so only `pr-<n>` stages register
 // it. Every other stage deploys and runs `alchemy dev` without a GitHub login.
-const providers = Layer.unwrap(
+const stageProviders = Layer.unwrap(
   Effect.gen(function* () {
     const { stage } = yield* Alchemy.Stack;
 
     return stage.startsWith("pr-")
-      ? Layer.mergeAll(Cloudflare.providers(), GitHub.providers())
-      : Cloudflare.providers();
+      ? Layer.mergeAll(providers, GitHub.providers())
+      : providers;
   })
 );
 
 export default Alchemy.Stack(
   "{{pascalName}}",
-  { providers, state },
+  { providers: stageProviders, state },
   Effect.gen(function* () {
     const { stage } = yield* Alchemy.Stack;
 

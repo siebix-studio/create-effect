@@ -7,6 +7,7 @@ import * as Path from "effect/Path";
 import * as Runtime from "effect/Runtime";
 import * as Schema from "effect/Schema";
 
+import * as Database from "./database.ts";
 import * as Project from "./project.ts";
 import * as Template from "./template.ts";
 
@@ -32,6 +33,7 @@ export class Cancelled extends Schema.TaggedError<
 /** What the command line said. `None` is a question still open. */
 export interface Input {
   readonly directory: Option.Option<string>;
+  readonly database: Option.Option<Database.Database>;
   readonly install: Option.Option<boolean>;
   readonly git: Option.Option<boolean>;
   readonly githubActions: Option.Option<boolean>;
@@ -41,6 +43,7 @@ export interface Input {
 
 export interface Answers {
   readonly project: Project.Project;
+  readonly database: Database.Database;
   readonly install: boolean;
   readonly git: boolean;
   /** Also write the deploy workflow. The one question whose default is no. */
@@ -130,6 +133,19 @@ export const resolve = Effect.fn("Answers.resolve")(function* (input: Input) {
     });
   }
 
+  const database = yield* Option.match(input.database, {
+    onNone: () =>
+      interactive
+        ? ask(
+            Prompt.Select({
+              message: "Add a database?",
+              choices: Database.CHOICES,
+            })
+          )
+        : Effect.succeed(Database.DEFAULT),
+    onSome: Effect.succeed,
+  });
+
   const install = yield* confirm(
     input.install,
     "Install dependencies with bun?",
@@ -147,6 +163,7 @@ export const resolve = Effect.fn("Answers.resolve")(function* (input: Input) {
 
   return {
     project,
+    database,
     install,
     git,
     githubActions,
@@ -155,6 +172,7 @@ export const resolve = Effect.fn("Answers.resolve")(function* (input: Input) {
       interactive &&
       (overwrite ||
         Option.isNone(input.directory) ||
+        Option.isNone(input.database) ||
         Option.isNone(input.install) ||
         Option.isNone(input.git) ||
         Option.isNone(input.githubActions)),

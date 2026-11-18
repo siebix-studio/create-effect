@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import type * as PlatformError from "effect/PlatformError";
+import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 
 import { stackName } from "./project.ts";
@@ -35,17 +36,48 @@ const templateError = (operation: string) =>
 
 const TEMPLATE_URL = new URL("../template", import.meta.url);
 
+const DATABASE_URL = new URL("../overlays/database", import.meta.url);
+
 /**
- * What a flag, or `add` in a project that already exists, lays over the template. See `layer` for
- * how an overlay's files land.
+ * What a flag, or `add` in a project that already exists, lays over the template, as directories
+ * in order. See `layer` for how an overlay's files land.
  */
 const OVERLAY_URLS = {
-  "github-actions": new URL("../overlays/github-actions", import.meta.url),
+  "github-actions": [new URL("../overlays/github-actions", import.meta.url)],
+  d1: [DATABASE_URL, new URL("../overlays/d1", import.meta.url)],
+  neon: [DATABASE_URL, new URL("../overlays/neon", import.meta.url)],
 };
 
 export type Overlay = keyof typeof OVERLAY_URLS;
 
-export const OVERLAYS: readonly [Overlay, ...Overlay[]] = ["github-actions"];
+export const OVERLAYS: readonly [Overlay, ...Overlay[]] = [
+  "github-actions",
+  "d1",
+  "neon",
+];
+
+/**
+ * Template files an overlay builds on without replacing them. A project from before the template
+ * had one cannot take the overlay.
+ */
+const REQUIRED_FILES: Partial<Record<Overlay, readonly string[]>> = {
+  neon: ["providers.ts"],
+};
+
+const TEMPLATE_SOURCE =
+  "https://github.com/siebix-studio/create-effect/blob/main/apps/cli/template";
+
+export class MissingTemplateFile extends Schema.TaggedError<
+  MissingTemplateFile,
+  { readonly brand: unique symbol }
+>()("MissingTemplateFile", {
+  overlay: Schema.String,
+  file: Schema.String,
+}) {
+  override get [CliError.userMessage]() {
+    return `${this.overlay} builds on ${this.file}, which this project does not have: an older create-effect made it. Nothing was changed. Bring the project in line with ${TEMPLATE_SOURCE}/${this.file} and the files that import it, then run this again.`;
+  }
+}
 
 const SKIPPED_ENTRIES = new Set([
   "node_modules",
@@ -90,7 +122,7 @@ const replace: Place = Effect.fnUntraced(function* (file, content) {
 const PackageJson = Schema.fromJsonString(Schema.Json, { space: 2 });
 
 const isJsonObject = (value: Schema.Json): value is Schema.JsonObject =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+  Predicate.isObject(value);
 
 const DEPENDENCY_FIELDS = new Set(["dependencies", "devDependencies"]);
 
@@ -244,19 +276,38 @@ const directoryOf = Effect.fnUntraced(function* (url: URL) {
  */
 export const add = Effect.fn("Template.add")(
   function* (project: Project, overlay: Overlay) {
+    const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const template = yield* directoryOf(TEMPLATE_URL);
 
-    const kept = yield* copyDirectory(
-      yield* directoryOf(OVERLAY_URLS[overlay]),
-      project.directory,
-      project,
-      layer(template, project)
+    for (const file of REQUIRED_FILES[overlay] ?? []) {
+      if (!(yield* fs.exists(path.join(project.directory, file)))) {
+        return yield* new MissingTemplateFile({ overlay, file });
+      }
+    }
+
+    const kept = yield* Effect.forEach(
+      OVERLAY_URLS[overlay],
+      Effect.fnUntraced(function* (url) {
+        return yield* copyDirectory(
+          yield* directoryOf(url),
+          project.directory,
+          project,
+          layer(template, project)
+        );
+      })
     );
 
-    return Array.map(kept, (file) => path.relative(project.directory, file));
+    return Array.map(kept.flat(), (file) =>
+      path.relative(project.directory, file)
+    );
   },
-  (effect, _project, overlay) => effect.pipe(templateError(`add ${overlay}`))
+  (effect, _project, overlay) =>
+    effect.pipe(
+      Effect.catchTag("PlatformError", (cause) =>
+        Effect.fail(new TemplateError({ operation: `add ${overlay}`, cause }))
+      )
+    )
 );
 
 export interface Options {

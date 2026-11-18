@@ -236,6 +236,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
 
 const SESSION = [
   "? Project name (my-app) › shop",
+  "? Add a database? › D1",
   "? Install dependencies with bun? › yes",
   "? Initialize a git repository? › yes",
   "? Add a GitHub Actions workflow that deploys it? › no",
@@ -267,9 +268,14 @@ const FEATURES: ReadonlyArray<Feature> = [
       "The website's client is derived from the contract the API implements. Change one side and the other stops compiling.",
   },
   {
+    title: "A database if you want one",
+    description:
+      "D1 or Neon Postgres, with a migration, a repository written in Effect SQL and tests that cover it. Or none at all.",
+  },
+  {
     title: "The whole stack on your machine",
     description:
-      "bun run dev and bun run test start the API and the website locally. Neither needs a Cloudflare account.",
+      "bun run dev and bun run test start the API, the website and a D1 database locally. Neither needs a Cloudflare account.",
   },
   {
     title: "Deployed with Alchemy",
@@ -298,10 +304,7 @@ const FEATURES: ReadonlyArray<Feature> = [
   },
 ];
 
-const ROADMAP: ReadonlyArray<string> = [
-  "A database: D1 or Neon Postgres",
-  "Sign-in with better-auth",
-];
+const ROADMAP: ReadonlyArray<string> = ["Sign-in with better-auth"];
 
 const COUNT_FORMAT = new Intl.NumberFormat("en");
 
@@ -358,7 +361,7 @@ const sessionView = (h: HtmlBuilder<Message>): Html =>
   h.section(
     [h.Class("grid gap-6")],
     [
-      h.h2([h.Class(SECTION_HEADING_CLASS)], ["Four questions"]),
+      h.h2([h.Class(SECTION_HEADING_CLASS)], ["Five questions"]),
       h.p(
         [h.Class("max-w-xl text-pretty text-neutral-600")],
         [
@@ -409,6 +412,8 @@ type Share = Readonly<{ label: string; projects: number }>;
 
 const FEATURE_LABELS: Readonly<Record<string, string>> = {
   "github-actions": "Added the deploy workflow",
+  d1: "Added a D1 database",
+  neon: "Added a Neon Postgres database",
 };
 
 const PLATFORM_NAMES: Readonly<Record<string, string>> = {

@@ -24,25 +24,54 @@ afterAll(async () => {
   await rm(workspace, { recursive: true, force: true });
 });
 
-// The deploy workflow brings a stack file of its own and another alchemy.run.ts, so both shapes
-// of the project are checked.
+const create = (name: string, flags: readonly string[]) => {
+  exec("bun", [BIN, name, ...flags], workspace);
+
+  const project = path.join(workspace, name);
+  expect(existsSync(path.join(project, "bun.lock"))).toBe(true);
+  expect(existsSync(path.join(project, ".git"))).toBe(true);
+  expect(existsSync(path.join(project, ".git/hooks/pre-commit"))).toBe(true);
+  expect(existsSync(path.join(project, ".vscode/settings.json"))).toBe(true);
+
+  return project;
+};
+
+// Each overlay replaces files of the template, so each shape of the project is checked, and two
+// overlays together.
 test.each([
   { name: "my-app", flags: [] },
   { name: "my-ci-app", flags: ["--github-actions"] },
+  { name: "my-d1-app", flags: ["--database", "d1"] },
+  { name: "my-ci-d1-app", flags: ["--database", "d1", "--github-actions"] },
 ])(
   "a project generated with $flags installs and passes its own checks",
   ({ name, flags }) => {
-    exec("bun", [BIN, name, ...flags], workspace);
-
-    const project = path.join(workspace, name);
-    expect(existsSync(path.join(project, "bun.lock"))).toBe(true);
-    expect(existsSync(path.join(project, ".git"))).toBe(true);
-    expect(existsSync(path.join(project, ".git/hooks/pre-commit"))).toBe(true);
-    expect(existsSync(path.join(project, ".vscode/settings.json"))).toBe(true);
+    const project = create(name, flags);
 
     exec("bun", ["run", "check"], project);
     exec("bun", ["run", "typecheck"], project);
     exec("bun", ["run", "test"], project);
   },
   5 * MINUTES
+);
+
+// The stack test creates a real Neon project, so it only runs where Neon credentials are set.
+test(
+  "a project generated with a Neon database installs and passes its own checks",
+  () => {
+    const project = create("my-neon-app", [
+      "--database",
+      "neon",
+      "--github-actions",
+    ]);
+
+    exec("bun", ["run", "check"], project);
+    exec("bun", ["run", "typecheck"], project);
+    exec("bun", ["--filter", "./apps/*", "test"], project);
+
+    if (process.env.NEON_API_KEY !== undefined) {
+      exec("bunx", ["vitest", "run"], project);
+    }
+  },
+  10 * MINUTES
 );

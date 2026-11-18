@@ -6,7 +6,7 @@ import core from "ultracite/oxlint/core";
 export default defineConfig({
   env: core.env,
   extends: [core, antiSlop, effect],
-  // The CLI's template and what `--github-actions` adds to it are a project of their own: it is
+  // The CLI's template and the overlays laid over it are a project of their own: it is
   // linted with its own config, inside a generated project, by apps/cli/test/e2e.test.ts.
   ignorePatterns: [
     ...core.ignorePatterns,
