@@ -26,8 +26,7 @@ export const CHOICES: readonly Prompt.SelectChoice<Database>[] = [
   },
 ];
 
-const isDatabase = (feature: string): feature is (typeof DATABASES)[number] =>
-  DATABASES.some((database) => database === feature);
+const isDatabase = Schema.is(Schema.Literals(DATABASES));
 
 export const among = (features: readonly string[]) => features.find(isDatabase);
 

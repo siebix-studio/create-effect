@@ -14,7 +14,7 @@ export class PersistenceError extends Schema.TaggedError<
 export interface Interface {
   readonly record: (name: string) => Effect.Effect<void, PersistenceError>;
   /** The names greeted last, newest first. */
-  readonly listRecent: Effect.Effect<readonly string[], PersistenceError>;
+  readonly listRecent: () => Effect.Effect<readonly string[], PersistenceError>;
 }
 
 export class Service extends Context.Service<Service, Interface>()(
@@ -51,21 +51,27 @@ export const layer = Layer.effect(
         )
     );
 
-    const listRecent = _listRecent().pipe(
-      Effect.map((rows) => rows.map((row) => row.name)),
-      Effect.catchTags({
-        SqlError: (cause) =>
-          PersistenceError.make({
-            operation: "GreetingRepo.listRecent",
-            cause,
-          }),
-        SchemaError: (cause) =>
-          PersistenceError.make({
-            operation: "GreetingRepo.listRecent",
-            cause,
-          }),
-      }),
-      Effect.withSpan("GreetingRepo.listRecent")
+    const listRecent = Effect.fn("GreetingRepo.listRecent")(
+      function* () {
+        const rows = yield* _listRecent();
+
+        return rows.map((row) => row.name);
+      },
+      (effect) =>
+        effect.pipe(
+          Effect.catchTags({
+            SqlError: (cause) =>
+              PersistenceError.make({
+                operation: "GreetingRepo.listRecent",
+                cause,
+              }),
+            SchemaError: (cause) =>
+              PersistenceError.make({
+                operation: "GreetingRepo.listRecent",
+                cause,
+              }),
+          })
+        )
     );
 
     return Service.of({ record, listRecent });

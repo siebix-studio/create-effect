@@ -14,7 +14,7 @@ const GreetingRepoMemory = Layer.effect(
 
     return GreetingRepo.Service.of({
       record: (name) => Ref.update(names, (recorded) => [name, ...recorded]),
-      listRecent: Ref.get(names),
+      listRecent: () => Ref.get(names),
     });
   })
 );

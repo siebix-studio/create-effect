@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import type * as PlatformError from "effect/PlatformError";
+import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 
 import { stackName } from "./project.ts";
@@ -121,7 +122,7 @@ const replace: Place = Effect.fnUntraced(function* (file, content) {
 const PackageJson = Schema.fromJsonString(Schema.Json, { space: 2 });
 
 const isJsonObject = (value: Schema.Json): value is Schema.JsonObject =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+  Predicate.isObject(value);
 
 const DEPENDENCY_FIELDS = new Set(["dependencies", "devDependencies"]);
 
