@@ -1,6 +1,6 @@
 {
   "name": "@siebix/create-effect",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Create a full-stack Effect app on Cloudflare with one command: an Effect HTTP API, a Foldkit website and the typed contract they share, deployed with Alchemy.",
   "keywords": [
     "alchemy",
