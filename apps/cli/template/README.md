@@ -23,6 +23,10 @@ bun run test        # API tests, Foldkit scene tests, and a test of the whole st
 
 `bun run dev` and `bun run test` run everything on your machine. Neither needs a Cloudflare account.
 
+A [lefthook](https://lefthook.dev) pre-commit hook runs `ultracite fix` on staged files. `bun install` sets it up once the project is a git repository; if you create the repository later, run `bunx lefthook install`.
+
+In VS Code, install the [Oxc extension](https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode); `.vscode/settings.json` formats on save and applies lint fixes with it.
+
 ## Agents
 
 `AGENTS.md` tells coding agents how the project is laid out. `.mcp.json` gives them the [Foldkit DevTools](https://foldkit.dev/ai/mcp): with `bun run dev` running and the website open in a browser tab, an agent can read the website's Model and Message history, replay past states and dispatch Messages. Agents that read `.mcp.json`, such as Claude Code, pick it up when they start in this folder.

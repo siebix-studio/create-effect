@@ -1,5 +1,13 @@
 # @siebix/create-effect
 
+## 0.2.0
+
+### Minor Changes
+
+- [#7](https://github.com/siebix-studio/create-effect/pull/7) [`b0297a2`](https://github.com/siebix-studio/create-effect/commit/b0297a2fe84c0b8058f098b0c8fafbf96e91e540) Thanks [@Siebe-Studio](https://github.com/Siebe-Studio)! - New projects come with a lefthook pre-commit hook that runs `ultracite fix` on staged files. It is installed by `bun install` when the project is a git repository.
+
+  They also ship the `.vscode/settings.json` Ultracite sets up, so VS Code formats on save and fixes lint issues with the Oxc extension.
+
 ## 0.1.1
 
 ### Patch Changes
