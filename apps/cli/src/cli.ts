@@ -48,10 +48,10 @@ const git = Flag.Boolean("git").pipe(
 );
 
 const githubActions = Flag.Boolean("github-actions").pipe(
-  Flag.withDefault(false),
   Flag.withDescription(
-    "Add a GitHub Actions workflow that deploys main and previews each pull request. It needs Cloudflare credentials in GitHub"
-  )
+    "Add a GitHub Actions workflow that deploys main and previews each pull request (--no-github-actions to skip). It needs Cloudflare credentials in GitHub. Asked for when omitted"
+  ),
+  Flag.optional
 );
 
 const force = Flag.Boolean("force").pipe(
@@ -153,7 +153,7 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
           relativeDirectory,
           answers.install ? "--install" : "--no-install",
           answers.git ? "--git" : "--no-git",
-          ...(answers.githubActions ? ["--github-actions"] : []),
+          answers.githubActions ? "--github-actions" : "--no-github-actions",
           ...(answers.overwrite ? ["--force"] : []),
         ].join(" ")}`,
       ].join("\n")

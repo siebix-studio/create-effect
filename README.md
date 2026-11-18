@@ -15,13 +15,13 @@ The project it creates is a Bun workspace:
 | `apps/web` | A prerendered Foldkit website that calls the API through a typed client |
 | `alchemy.run.ts` | The stack that deploys both |
 
-Run without arguments, it asks for the project name, whether to install dependencies and whether to initialize git. Each question has a flag, and a flag skips its question:
+Run without arguments, it asks for the project name, whether to install dependencies, whether to initialize git and whether to add a deploy workflow. Each question has a flag, and a flag skips its question:
 
 | Flag | What |
 | --- | --- |
 | `--install`, `--no-install` | Run `bun install`, or don't |
 | `--git`, `--no-git` | Create a git repository with a first commit, or don't |
-| `--github-actions` | Add a GitHub Actions workflow that deploys `main` and previews each pull request. Never asked for |
+| `--github-actions`, `--no-github-actions` | Add a GitHub Actions workflow that deploys `main` and previews each pull request, or don't |
 | `--force` | Write into a directory that is not empty without asking |
 | `--yes`, `-y` | Ask nothing and take every default; a missing name becomes `my-app` |
 

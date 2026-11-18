@@ -6,7 +6,7 @@ Create a full-stack [Effect](https://effect.website) app on Cloudflare with one 
 bunx @siebix/create-effect
 ```
 
-It asks for a project name, whether to install dependencies and whether to initialize git, then writes a project you can run straight away:
+It asks for a project name, whether to install dependencies, whether to initialize git and whether to add a deploy workflow, then writes a project you can run straight away:
 
 ```sh
 cd my-app
@@ -37,7 +37,7 @@ Every question has a flag, and a flag skips its question.
 | --- | --- |
 | `--install`, `--no-install` | Run `bun install`, or don't |
 | `--git`, `--no-git` | Create a git repository with a first commit, or don't |
-| `--github-actions` | Add a GitHub Actions workflow that deploys `main` and previews each pull request. Never asked for |
+| `--github-actions`, `--no-github-actions` | Add a GitHub Actions workflow that deploys `main` and previews each pull request, or don't |
 | `--force` | Write into a directory that is not empty without asking |
 | `--yes`, `-y` | Ask nothing and take every default; a missing name becomes `my-app` |
 
@@ -49,9 +49,9 @@ Where nothing can be asked, such as in CI, the defaults apply and the name has t
 
 ### Deploying from GitHub
 
-`--github-actions` adds `.github/workflows/deploy.yml`: it checks every change, deploys `main` to the `prod` stage, and gives each pull request a preview stage with a comment linking to it, destroyed when the pull request closes. It is opt-in because it needs Cloudflare credentials in GitHub. The project comes with `stacks/github.ts`, which creates a scoped token and stores it as repository secrets; its README walks through it.
+Answering yes to the last question, or passing `--github-actions`, adds `.github/workflows/deploy.yml`: it checks every change, deploys `main` to the `prod` stage, and gives each pull request a preview stage with a comment linking to it, destroyed when the pull request closes. Its default is no, because it needs Cloudflare credentials in GitHub. The project comes with `stacks/github.ts`, which creates a scoped token and stores it as repository secrets; its README walks through it.
 
-A project created without the flag can get the workflow later. Run this inside it:
+A project created without it can get the workflow later. Run this inside it:
 
 ```sh
 bunx @siebix/create-effect add github-actions

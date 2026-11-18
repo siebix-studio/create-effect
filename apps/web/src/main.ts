@@ -95,6 +95,7 @@ const SESSION = [
   "? Project name (my-app) › shop",
   "? Install dependencies with bun? › yes",
   "? Initialize a git repository? › yes",
+  "? Add a GitHub Actions workflow that deploys it? › no",
   "",
   "✔ Created shop",
   "✔ Initialized a git repository",
@@ -135,7 +136,7 @@ const FEATURES: ReadonlyArray<Feature> = [
   {
     title: "A deploy workflow when you want one",
     description:
-      "--github-actions adds a workflow that deploys main and gives every pull request its own preview. create-effect add github-actions brings it to a project you already have.",
+      "Say yes, and a GitHub Actions workflow deploys main and gives every pull request its own preview. create-effect add github-actions brings it to a project you already have.",
   },
   {
     title: "Logs and traces",
@@ -192,7 +193,7 @@ const sessionView = (h: HtmlBuilder<Message>): Html =>
   h.section(
     [h.Class("grid gap-6")],
     [
-      h.h2([h.Class(SECTION_HEADING_CLASS)], ["Three questions"]),
+      h.h2([h.Class(SECTION_HEADING_CLASS)], ["Four questions"]),
       h.p(
         [h.Class("max-w-xl text-pretty text-neutral-600")],
         [

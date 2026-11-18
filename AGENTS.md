@@ -20,7 +20,7 @@ Commands, from the root: `bun run check` (lint and format), `bun run fix`, `bun 
 - A dependency is added to the template's catalog (or the overlay's `package.json`) at the version the root `package.json` has; `test/template.test.ts` fails otherwise.
 - npm leaves `.gitignore` out of a published package, so it is stored as `gitignore`. Other dotfiles (`.mcp.json`, `.github/`) ship under their own name.
 - The generated project documents itself: `README.md` for people and `AGENTS.md` for agents, both in the template, with the overlay adding its own sections. Change them with the code they describe.
-- A new flag is defined in `src/cli.ts`, carried through `Input` and `Answers` in `src/answers.ts`, and echoed in the "Run it again" line. It is listed in the flag tables of `README.md` and `apps/cli/README.md`. Every question has a flag, but not every flag is a question (`--github-actions`, `--force`, `--yes`); a new question also changes the sample session and the "Three questions" section in `apps/web/src/main.ts`.
+- A new flag is defined in `src/cli.ts`, carried through `Input` and `Answers` in `src/answers.ts`, and echoed in the "Run it again" line. It is listed in the flag tables of `README.md` and `apps/cli/README.md`. Every question has a flag, but not every flag is a question (`--force`, `--yes`); a new question also changes the sample session and the "Four questions" section in `apps/web/src/main.ts`, and the sentence in both READMEs that lists the questions.
 - A change to what CLI users get needs a changeset (`bun changeset`); see "Releasing" in `README.md`.
 
 # Tests

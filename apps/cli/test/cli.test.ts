@@ -473,7 +473,9 @@ describe("questions", () => {
       const directory = yield* projectDirectory("shop");
 
       const steps = yield* scaffold([]).pipe(
-        Effect.provide(answering([...typed(directory), enter, enter, key("n")]))
+        Effect.provide(
+          answering([...typed(directory), enter, enter, key("n"), enter])
+        )
       );
 
       assert.deepStrictEqual(steps, ["install"]);
@@ -481,7 +483,10 @@ describe("questions", () => {
 
       const output = (yield* TestConsole.logLines).join("\n");
       assert.include(output, "Run it again without the questions:");
-      assert.include(output, "--install --no-git");
+      assert.include(output, "--install --no-git --no-github-actions");
+      assert.isFalse(
+        yield* fs.exists(path.join(directory, ".github/workflows/deploy.yml"))
+      );
     }).pipe(Effect.provide(TestLayer))
   );
 
@@ -490,11 +495,33 @@ describe("questions", () => {
       const directory = yield* projectDirectory("my-app");
 
       const steps = yield* scaffold([directory, "--no-git"]).pipe(
-        Effect.provide(answering([key("y")]))
+        Effect.provide(answering([key("y"), enter]))
       );
 
       assert.deepStrictEqual(steps, ["install"]);
     }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect(
+    "writes the deploy workflow when its question is answered yes",
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const directory = yield* projectDirectory("my-app");
+
+        yield* scaffold([directory, "--no-install", "--no-git"]).pipe(
+          Effect.provide(answering([key("y")]))
+        );
+
+        assert.isTrue(
+          yield* fs.exists(path.join(directory, ".github/workflows/deploy.yml"))
+        );
+        assert.include(
+          (yield* TestConsole.logLines).join("\n"),
+          "--no-install --no-git --github-actions"
+        );
+      }).pipe(Effect.provide(TestLayer))
   );
 
   it.effect("asks nothing with --yes", () =>
@@ -528,15 +555,14 @@ describe("questions", () => {
       assert.strictEqual(declined._tag, "DirectoryNotEmpty");
       assert.deepStrictEqual(yield* fs.readDirectory(directory), ["notes.txt"]);
 
-      yield* scaffold([directory, "--no-install", "--no-git"]).pipe(
-        Effect.provide(answering([key("y")]))
-      );
+      yield* scaffold([
+        directory,
+        "--no-install",
+        "--no-git",
+        "--no-github-actions",
+      ]).pipe(Effect.provide(answering([key("y")])));
       assert.isTrue(yield* fs.exists(path.join(directory, "package.json")));
       assert.include((yield* TestConsole.logLines).join("\n"), "--force");
-      assert.notInclude(
-        (yield* TestConsole.logLines).join("\n"),
-        "--github-actions"
-      );
     }).pipe(Effect.provide(TestLayer))
   );
 

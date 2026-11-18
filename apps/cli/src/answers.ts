@@ -34,7 +34,7 @@ export interface Input {
   readonly directory: Option.Option<string>;
   readonly install: Option.Option<boolean>;
   readonly git: Option.Option<boolean>;
-  readonly githubActions: boolean;
+  readonly githubActions: Option.Option<boolean>;
   readonly force: boolean;
   readonly yes: boolean;
 }
@@ -43,7 +43,7 @@ export interface Answers {
   readonly project: Project.Project;
   readonly install: boolean;
   readonly git: boolean;
-  /** Never asked: the deploy workflow is only written when its flag is passed. */
+  /** Also write the deploy workflow. The one question whose default is no. */
   readonly githubActions: boolean;
   /** The directory had files and the user chose to write into it anyway. */
   readonly overwrite: boolean;
@@ -138,17 +138,25 @@ export const resolve = Effect.fn("Answers.resolve")(function* (input: Input) {
 
   const git = yield* confirm(input.git, "Initialize a git repository?", true);
 
+  // Opt-in: the workflow only works once Cloudflare credentials are in GitHub.
+  const githubActions = yield* confirm(
+    input.githubActions,
+    "Add a GitHub Actions workflow that deploys it?",
+    false
+  );
+
   return {
     project,
     install,
     git,
-    githubActions: input.githubActions,
+    githubActions,
     overwrite,
     prompted:
       interactive &&
       (overwrite ||
         Option.isNone(input.directory) ||
         Option.isNone(input.install) ||
-        Option.isNone(input.git)),
+        Option.isNone(input.git) ||
+        Option.isNone(input.githubActions)),
   } satisfies Answers;
 });
