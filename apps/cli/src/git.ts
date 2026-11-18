@@ -35,10 +35,14 @@ export const layer = Layer.effect(
       message: string
     ) {
       yield* run("git", ["add", "--all"], { cwd: directory, output: "ignore" });
-      yield* run("git", ["commit", "--quiet", "--message", message], {
-        cwd: directory,
-        output: "ignore",
-      });
+      yield* run(
+        "git",
+        ["commit", "--quiet", "--no-verify", "--message", message],
+        {
+          cwd: directory,
+          output: "ignore",
+        }
+      );
     });
 
     return Service.of({ init, commitAll });
