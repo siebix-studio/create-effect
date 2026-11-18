@@ -35,6 +35,18 @@ const templateError = (operation: string) =>
 
 const TEMPLATE_URL = new URL("../template", import.meta.url);
 
+/**
+ * What a flag, or `add` in a project that already exists, lays over the template. See `layer` for
+ * how an overlay's files land.
+ */
+const OVERLAY_URLS = {
+  "github-actions": new URL("../overlays/github-actions", import.meta.url),
+};
+
+export type Overlay = keyof typeof OVERLAY_URLS;
+
+export const OVERLAYS: readonly [Overlay, ...Overlay[]] = ["github-actions"];
+
 const SKIPPED_ENTRIES = new Set([
   "node_modules",
   "dist",
@@ -58,12 +70,119 @@ const render = (content: string, project: Project): string =>
     .replaceAll("{{name}}", project.name)
     .replaceAll("{{pascalName}}", stackName(project.name));
 
+/** Puts one file in the project. `false` means the file there was left as it is. */
+type Place = (
+  file: string,
+  content: string
+) => Effect.Effect<
+  boolean,
+  PlatformError.PlatformError,
+  FileSystem.FileSystem | Path.Path
+>;
+
+const replace: Place = Effect.fnUntraced(function* (file, content) {
+  const fs = yield* FileSystem.FileSystem;
+  yield* fs.writeFileString(file, content);
+
+  return true;
+});
+
+const PackageJson = Schema.fromJsonString(Schema.Json, { space: 2 });
+
+const isJsonObject = (value: Schema.Json): value is Schema.JsonObject =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const DEPENDENCY_FIELDS = new Set(["dependencies", "devDependencies"]);
+
+const sortKeys = (value: Schema.Json): Schema.Json =>
+  isJsonObject(value)
+    ? Object.fromEntries(
+        Object.entries(value).toSorted(([a], [b]) => (a < b ? -1 : 1))
+      )
+    : value;
+
+/** Objects are merged key by key and anything else is replaced. Dependencies stay sorted. */
+const mergeJson = (base: Schema.Json, extra: Schema.Json): Schema.Json => {
+  if (!(isJsonObject(base) && isJsonObject(extra))) {
+    return extra;
+  }
+
+  const merged = new Map(Object.entries(base));
+
+  for (const [key, value] of Object.entries(extra)) {
+    merged.set(key, mergeJson(merged.get(key) ?? null, value));
+  }
+
+  return Object.fromEntries(
+    Array.map([...merged], ([key, value]) => [
+      key,
+      DEPENDENCY_FIELDS.has(key) ? sortKeys(value) : value,
+    ])
+  );
+};
+
+/**
+ * How an overlay's file lands on the one the project has. A `package.json` holds only what the
+ * overlay adds and is merged in, and a Markdown file holds only the sections it adds, which go at
+ * the end, so neither is a second copy that could drift from the template's.
+ *
+ * Any other file replaces the project's, but only while that one is still what the template
+ * wrote. In a project that has been worked on, a file its owner changed is left alone. Laying an
+ * overlay a second time changes nothing.
+ */
+const layer = (template: string, project: Project): Place =>
+  Effect.fnUntraced(function* (file, content) {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+
+    if (!(yield* fs.exists(file))) {
+      return yield* replace(file, content);
+    }
+
+    const existing = yield* fs.readFileString(file);
+
+    if (path.basename(file) === "package.json") {
+      const decode = Schema.decodeEffect(PackageJson);
+      const base = yield* decode(existing).pipe(Effect.orDie);
+      const extra = yield* decode(content).pipe(Effect.orDie);
+
+      const merged = yield* Schema.encodeEffect(PackageJson)(
+        mergeJson(base, extra)
+      ).pipe(Effect.orDie);
+
+      return yield* replace(file, `${merged}\n`);
+    }
+
+    if (path.extname(file) === ".md") {
+      return existing.includes(content)
+        ? true
+        : yield* replace(file, `${existing.trimEnd()}\n\n${content}`);
+    }
+
+    if (existing === content) {
+      return true;
+    }
+
+    const original = path.join(
+      template,
+      path.relative(project.directory, file)
+    );
+
+    const isUntouched =
+      (yield* fs.exists(original)) &&
+      render(yield* fs.readFileString(original), project) === existing;
+
+    return isUntouched ? yield* replace(file, content) : false;
+  });
+
+/** Copies a directory into the project and returns the files that were left as they are. */
 const copyDirectory = (
   from: string,
   to: string,
-  project: Project
+  project: Project,
+  place: Place
 ): Effect.Effect<
-  void,
+  readonly string[],
   PlatformError.PlatformError,
   FileSystem.FileSystem | Path.Path
 > =>
@@ -74,24 +193,31 @@ const copyDirectory = (
     yield* fs.makeDirectory(to, { recursive: true });
     const entries = yield* fs.readDirectory(from);
 
-    yield* Effect.forEach(
+    const kept = yield* Effect.forEach(
       Array.filter(entries, (entry) => !SKIPPED_ENTRIES.has(entry)),
-      Effect.fnUntraced(function* (entry) {
+      Effect.fnUntraced(function* (entry: string) {
         const source = path.join(from, entry);
         const info = yield* fs.stat(source);
 
         if (info.type === "Directory") {
-          yield* copyDirectory(source, path.join(to, entry), project);
-        } else {
-          const content = yield* fs.readFileString(source);
-          yield* fs.writeFileString(
-            path.join(to, RENAMED_ENTRIES.get(entry) ?? entry),
-            render(content, project)
+          return yield* copyDirectory(
+            source,
+            path.join(to, entry),
+            project,
+            place
           );
         }
-      }),
-      { discard: true }
+
+        const target = path.join(to, RENAMED_ENTRIES.get(entry) ?? entry);
+        const content = yield* fs.readFileString(source);
+
+        const isPlaced = yield* place(target, render(content, project));
+
+        return isPlaced ? [] : [target];
+      })
     );
+
+    return kept.flat();
   });
 
 export const isEmpty = Effect.fn("Template.isEmpty")(
@@ -106,11 +232,49 @@ export const isEmpty = Effect.fn("Template.isEmpty")(
   (effect, directory) => effect.pipe(templateError(`read ${directory}`))
 );
 
-export const write = Effect.fn("Template.write")(function* (project: Project) {
+const directoryOf = Effect.fnUntraced(function* (url: URL) {
   const path = yield* Path.Path;
-  const template = yield* path.fromFileUrl(TEMPLATE_URL).pipe(Effect.orDie);
 
-  yield* copyDirectory(template, project.directory, project).pipe(
-    templateError("write the project")
-  );
+  return yield* path.fromFileUrl(url).pipe(Effect.orDie);
+});
+
+/**
+ * Lays an overlay over a project, new or not, and returns the files it left alone because they
+ * have changes of their own, as paths inside the project.
+ */
+export const add = Effect.fn("Template.add")(
+  function* (project: Project, overlay: Overlay) {
+    const path = yield* Path.Path;
+    const template = yield* directoryOf(TEMPLATE_URL);
+
+    const kept = yield* copyDirectory(
+      yield* directoryOf(OVERLAY_URLS[overlay]),
+      project.directory,
+      project,
+      layer(template, project)
+    );
+
+    return Array.map(kept, (file) => path.relative(project.directory, file));
+  },
+  (effect, _project, overlay) => effect.pipe(templateError(`add ${overlay}`))
+);
+
+export interface Options {
+  readonly overlays: readonly Overlay[];
+}
+
+export const write = Effect.fn("Template.write")(function* (
+  project: Project,
+  options: Options
+) {
+  yield* copyDirectory(
+    yield* directoryOf(TEMPLATE_URL),
+    project.directory,
+    project,
+    replace
+  ).pipe(templateError("write the project"));
+
+  yield* Effect.forEach(options.overlays, (overlay) => add(project, overlay), {
+    discard: true,
+  });
 });

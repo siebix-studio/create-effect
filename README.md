@@ -21,10 +21,13 @@ Run without arguments, it asks for the project name, whether to install dependen
 | --- | --- |
 | `--install`, `--no-install` | Run `bun install`, or don't |
 | `--git`, `--no-git` | Create a git repository with a first commit, or don't |
+| `--github-actions` | Add a GitHub Actions workflow that deploys `main` and previews each pull request. Never asked for |
 | `--force` | Write into a directory that is not empty without asking |
 | `--yes`, `-y` | Ask nothing and take every default; a missing name becomes `my-app` |
 
 Where nothing can be asked (CI, a pipe) the defaults apply, and the name has to be given.
+
+`bunx @siebix/create-effect add github-actions`, run inside a project created earlier, adds what `--github-actions` would have written. It leaves files that were changed since as they are.
 
 ## Layout
 
@@ -32,6 +35,7 @@ Where nothing can be asked (CI, a pipe) the defaults apply, and the name has to 
 | --- | --- |
 | `apps/cli` | The CLI (`@siebix/create-effect`, binary `create-effect`), built with `effect/cli` |
 | `apps/cli/template` | The project the CLI creates, copied as is with the project name filled in |
+| `apps/cli/overlays` | What a flag adds to that project: `github-actions` holds the deploy workflow |
 | `apps/web` | The website at [effect.siebix.com](https://effect.siebix.com), a prerendered Foldkit app |
 | `alchemy.run.ts` | The deploy stack for the website |
 | `stacks/github.ts` | CI credentials (Cloudflare API token and account ID as GitHub secrets) |

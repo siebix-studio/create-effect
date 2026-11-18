@@ -34,6 +34,7 @@ export interface Input {
   readonly directory: Option.Option<string>;
   readonly install: Option.Option<boolean>;
   readonly git: Option.Option<boolean>;
+  readonly githubActions: boolean;
   readonly force: boolean;
   readonly yes: boolean;
 }
@@ -42,6 +43,8 @@ export interface Answers {
   readonly project: Project.Project;
   readonly install: boolean;
   readonly git: boolean;
+  /** Never asked: the deploy workflow is only written when its flag is passed. */
+  readonly githubActions: boolean;
   /** The directory had files and the user chose to write into it anyway. */
   readonly overwrite: boolean;
   /** At least one answer came from a prompt instead of the command line. */
@@ -139,6 +142,7 @@ export const resolve = Effect.fn("Answers.resolve")(function* (input: Input) {
     project,
     install,
     git,
+    githubActions: input.githubActions,
     overwrite,
     prompted:
       interactive &&

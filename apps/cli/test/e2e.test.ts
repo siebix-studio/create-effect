@@ -19,12 +19,17 @@ afterAll(async () => {
   await rm(workspace, { recursive: true, force: true });
 });
 
-test(
-  "a generated project installs and passes its own checks",
-  () => {
-    exec("bun", [BIN, "my-app"], workspace);
+// The deploy workflow brings a stack file of its own and another alchemy.run.ts, so both shapes
+// of the project are checked.
+test.each([
+  { name: "my-app", flags: [] },
+  { name: "my-ci-app", flags: ["--github-actions"] },
+])(
+  "a project generated with $flags installs and passes its own checks",
+  ({ name, flags }) => {
+    exec("bun", [BIN, name, ...flags], workspace);
 
-    const project = path.join(workspace, "my-app");
+    const project = path.join(workspace, name);
     expect(existsSync(path.join(project, "bun.lock"))).toBe(true);
     expect(existsSync(path.join(project, ".git"))).toBe(true);
 

@@ -1,6 +1,7 @@
 import { assert, it } from "@effect/vitest";
 
 import RootPackageJson from "../../../package.json" with { type: "json" };
+import GitHubActionsPackageJson from "../overlays/github-actions/package.json" with { type: "json" };
 import TemplatePackageJson from "../template/package.json" with { type: "json" };
 
 it("the template pins the same versions as this repository", () => {
@@ -14,6 +15,8 @@ it("the template pins the same versions as this repository", () => {
   const template = Object.entries({
     ...TemplatePackageJson.devDependencies,
     ...TemplatePackageJson.workspaces.catalog,
+    ...GitHubActionsPackageJson.devDependencies,
+    ...GitHubActionsPackageJson.workspaces.catalog,
   });
 
   for (const [name, version] of template) {

@@ -1,0 +1,10 @@
+{
+  "workspaces": {
+    "catalog": {
+      "@alchemy.run/github": "^2.0.0-beta.87"
+    }
+  },
+  "devDependencies": {
+    "@alchemy.run/github": "catalog:"
+  }
+}

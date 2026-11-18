@@ -37,7 +37,8 @@
   },
   "files": [
     "src",
-    "template"
+    "template",
+    "overlays"
   ],
   "type": "module",
   "publishConfig": {

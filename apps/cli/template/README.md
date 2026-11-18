@@ -23,6 +23,12 @@ bun run test        # API tests, Foldkit scene tests, and a test of the whole st
 
 `bun run dev` and `bun run test` run everything on your machine. Neither needs a Cloudflare account.
 
+## Agents
+
+`AGENTS.md` tells coding agents how the project is laid out. `.mcp.json` gives them the [Foldkit DevTools](https://foldkit.dev/ai/mcp): with `bun run dev` running and the website open in a browser tab, an agent can read the website's Model and Message history, replay past states and dispatch Messages. Agents that read `.mcp.json`, such as Claude Code, pick it up when they start in this folder.
+
+The tools return whatever is in the Model, so keep credentials out of it. To switch them off, set `devToolsMcpPort: false` in the `foldkit()` options in `apps/web/vite.config.ts`.
+
 ## Deploying
 
 Deploying needs Cloudflare credentials. Connect your account once:

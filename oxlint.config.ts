@@ -6,9 +6,13 @@ import core from "ultracite/oxlint/core";
 export default defineConfig({
   env: core.env,
   extends: [core, antiSlop, effect],
-  // The CLI's template is a project of its own: it is linted with its own config, inside a
-  // generated project, by apps/cli/test/e2e.test.ts.
-  ignorePatterns: [...core.ignorePatterns, "apps/cli/template/**"],
+  // The CLI's template and what `--github-actions` adds to it are a project of their own: it is
+  // linted with its own config, inside a generated project, by apps/cli/test/e2e.test.ts.
+  ignorePatterns: [
+    ...core.ignorePatterns,
+    "apps/cli/template/**",
+    "apps/cli/overlays/**",
+  ],
   options: { typeAware: true },
   rules: {
     // Effect code is built from anonymous generators (Effect.gen(function* () {}),

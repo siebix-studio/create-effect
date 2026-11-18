@@ -156,6 +156,7 @@ describe("create-effect", () => {
         [...files],
         [
           ".gitignore",
+          ".mcp.json",
           "package.json",
           "alchemy.run.ts",
           "apps/api/src/worker.ts",
@@ -164,6 +165,8 @@ describe("create-effect", () => {
         ]
       );
       assert.notInclude(files, "gitignore");
+      assert.notInclude(files, ".github/workflows/deploy.yml");
+      assert.notInclude(files, "stacks/github.ts");
 
       const packageJson = yield* fs.readFileString(
         path.join(directory, "package.json")
@@ -186,6 +189,81 @@ describe("create-effect", () => {
         contents.some((content) => content.includes("{{")),
         "a placeholder was left unfilled"
       );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("adds the deploy workflow with --github-actions", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+
+      const read = (file: string) =>
+        fs.readFileString(path.join(directory, file));
+
+      yield* scaffold([directory, "--github-actions"]);
+
+      const files = yield* listFiles(directory);
+      assert.includeMembers(
+        [...files],
+        [".github/workflows/deploy.yml", "stacks/github.ts", "alchemy.run.ts"]
+      );
+
+      // What the files should hold is read from their sources, so this test follows the
+      // template's wording instead of repeating it.
+      const source = (file: string) =>
+        fs
+          .readFileString(path.join(import.meta.dirname, "..", file))
+          .pipe(
+            Effect.map((content) =>
+              content
+                .replaceAll("{{name}}", "my-app")
+                .replaceAll("{{pascalName}}", "MyApp")
+            )
+          );
+
+      const overlay = "overlays/github-actions";
+
+      // A file of the overlay replaces the template's.
+      assert.strictEqual(
+        yield* read("alchemy.run.ts"),
+        yield* source(`${overlay}/alchemy.run.ts`)
+      );
+      assert.notStrictEqual(
+        yield* source(`${overlay}/alchemy.run.ts`),
+        yield* source("template/alchemy.run.ts")
+      );
+
+      // Its package.json is merged into the template's, and dependencies stay sorted.
+      const packageJson = yield* read("package.json");
+      assert.include(packageJson, '"name": "my-app"');
+      assert.include(
+        packageJson,
+        [
+          '    "@alchemy.run/frontend-frameworks": "catalog:",',
+          '    "@alchemy.run/github": "catalog:",',
+          '    "@alchemy.run/test": "catalog:",',
+        ].join("\n")
+      );
+      assert.match(packageJson, /"@alchemy\.run\/github": "\^/u);
+
+      // Its Markdown goes after the template's.
+      for (const file of ["README.md", "AGENTS.md"]) {
+        assert.strictEqual(
+          yield* read(file),
+          `${yield* source(`template/${file}`)}\n${yield* source(`${overlay}/${file}`)}`
+        );
+      }
+
+      const contents = yield* Effect.forEach(files, read);
+      assert.isFalse(
+        // Not a bare `{{`: the workflow is full of `${{ … }}` expressions.
+        contents.some((content) => /\{\{\w+\}\}/u.test(content)),
+        "a placeholder was left unfilled"
+      );
+
+      const output = (yield* TestConsole.logLines).join("\n");
+      assert.include(output, "stacks/github.ts");
     }).pipe(Effect.provide(TestLayer))
   );
 
@@ -295,6 +373,98 @@ describe("create-effect", () => {
   );
 });
 
+describe("add", () => {
+  const readAll = Effect.fn("Test.readAll")(function* (directory: string) {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const files = yield* listFiles(directory);
+
+    const contents = yield* Effect.forEach(files, (file) =>
+      fs.readFileString(path.join(directory, file))
+    );
+
+    return Object.fromEntries(
+      files.map((file, index) => [file, contents[index]])
+    );
+  });
+
+  it.effect("turns a project into the one its flag would have created", () =>
+    Effect.gen(function* () {
+      const created = yield* projectDirectory("my-app");
+      const added = yield* projectDirectory("my-app");
+      yield* scaffold([
+        created,
+        "--github-actions",
+        "--no-install",
+        "--no-git",
+      ]);
+      yield* scaffold([added, "--no-install", "--no-git"]);
+
+      const steps = yield* scaffold([
+        "add",
+        "github-actions",
+        "--directory",
+        added,
+      ]);
+
+      assert.deepStrictEqual(steps, ["install"]);
+      assert.deepStrictEqual(yield* readAll(added), yield* readAll(created));
+      assert.deepStrictEqual(yield* TestConsole.errorLines, []);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("changes nothing the second time", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+      const add = ["add", "github-actions", "--directory", directory];
+      yield* scaffold([directory, "--no-install", "--no-git"]);
+      yield* scaffold([...add, "--no-install"]);
+      const once = yield* readAll(directory);
+
+      const steps = yield* scaffold([...add, "--no-install"]);
+
+      assert.deepStrictEqual(steps, []);
+      assert.deepStrictEqual(yield* readAll(directory), once);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("leaves a file the project's owner changed", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+      const stack = path.join(directory, "alchemy.run.ts");
+      yield* scaffold([directory, "--no-install", "--no-git"]);
+      const changed = `${yield* fs.readFileString(stack)}// mine\n`;
+      yield* fs.writeFileString(stack, changed);
+
+      yield* scaffold(["add", "github-actions", "--directory", directory]);
+
+      assert.strictEqual(yield* fs.readFileString(stack), changed);
+      assert.isTrue(yield* fs.exists(path.join(directory, "stacks/github.ts")));
+      assert.include(
+        (yield* TestConsole.errorLines).join("\n"),
+        "Left alchemy.run.ts as it is"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("refuses a directory that is not a project", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const directory = yield* projectDirectory("my-app");
+      yield* fs.makeDirectory(directory);
+
+      const error = yield* Effect.flip(
+        scaffold(["add", "github-actions", "--directory", directory])
+      );
+
+      assert.strictEqual(error._tag, "NotAProject");
+      assert.deepStrictEqual(yield* fs.readDirectory(directory), []);
+    }).pipe(Effect.provide(TestLayer))
+  );
+});
+
 describe("questions", () => {
   it.effect("asks for whatever the command line left open", () =>
     Effect.gen(function* () {
@@ -363,6 +533,10 @@ describe("questions", () => {
       );
       assert.isTrue(yield* fs.exists(path.join(directory, "package.json")));
       assert.include((yield* TestConsole.logLines).join("\n"), "--force");
+      assert.notInclude(
+        (yield* TestConsole.logLines).join("\n"),
+        "--github-actions"
+      );
     }).pipe(Effect.provide(TestLayer))
   );
 
