@@ -26,6 +26,8 @@ It runs on [Bun](https://bun.sh), and so does the project it creates.
 
 - **One typed contract.** The website's client is derived from the contract the API implements. Change one side and the other stops compiling.
 - **A database if you want one.** D1 or Neon Postgres, with a migration, a repository written in Effect SQL and tests that cover it. D1 runs on your machine with the rest. Neon is a real Neon project, also in development, so it needs a Neon account from the start.
+- **Sign-in if you want it.** With D1, [better-auth](https://better-auth.com) in the API Worker: email and password, an endpoint only a signed-in user can call, and an account section on the website.
+- **Your own domain.** Name one, and the `prod` stage serves the website from it and the API from `/api` on the same origin. Without one, everything is on workers.dev.
 - **The whole stack on your machine.** `bun run dev` and `bun run test` start the API and the website locally. Neither needs a Cloudflare account.
 - **Tooling that is already set up.** Ultracite, oxlint with Effect rules, oxfmt and effect-tsgo, passing from the first commit.
 - **Ready for agents.** An `AGENTS.md`, and an `.mcp.json` that lets an agent inspect the running website through the Foldkit DevTools.
@@ -37,6 +39,8 @@ Every question has a flag, and a flag skips its question.
 | Flag | What |
 | --- | --- |
 | `--database d1\|neon\|none` | Add a D1 database, a Neon Postgres database, or none (the default) |
+| `--better-auth`, `--no-better-auth` | Add sign-in with better-auth, or don't. It keeps its users in the D1 database, so it needs `--database d1` |
+| `--domain example.com\|none` | Serve the `prod` stage from a domain on your Cloudflare account, with the API at `/api`, or stay on workers.dev (the default) |
 | `--install`, `--no-install` | Run `bun install`, or don't |
 | `--git`, `--no-git` | Create a git repository with a first commit, or don't |
 | `--github-actions`, `--no-github-actions` | Add a GitHub Actions workflow that deploys `main` and previews each pull request, or don't |
@@ -46,6 +50,7 @@ Every question has a flag, and a flag skips its question.
 ```sh
 bunx @siebix/create-effect my-app --yes
 bunx @siebix/create-effect my-app --database d1
+bunx @siebix/create-effect my-app --database d1 --better-auth --domain example.com
 ```
 
 Where nothing can be asked, such as in CI, the defaults apply and the name has to be given.
@@ -61,6 +66,16 @@ bunx @siebix/create-effect add github-actions
 ```
 
 A database is added the same way, with `add d1` or `add neon`, to a project that has none yet. It replaces the API's Worker, handlers and tests, so it fits a project whose API is still the one that was generated.
+
+`add better-auth` adds sign-in to a project that has the D1 database. It replaces the Worker, the contract and the website's page again, so it fits a project that still has the ones the database came with.
+
+### Sign-in
+
+With D1, answering yes to the sign-in question, or passing `--better-auth`, runs [better-auth](https://better-auth.com) inside the API Worker through Alchemy's integration. People sign up and sign in with an email address and a password; users and sessions are kept in the project's D1 database, and the session is an HttpOnly cookie. The contract gets an `Authentication` middleware and `GET /api/me` as an endpoint behind it, and the website an account section. It is not written for Neon yet.
+
+### A domain
+
+Every stage is served from workers.dev, where the website and the API each have an address. `--domain example.com`, or the domain question, puts the hostname in the project's `domain.ts`: the `prod` stage then serves the website from it and the API from `/api` on the same origin, through a route on the API Worker. The domain has to be on your Cloudflare account before that first deploy. Other stages and `bun run dev` stay as they are, and `domain.ts` can be filled in later by hand.
 
 Every project has a `create-effect.json` that records which features it has, so `add` tells you when there is nothing left to add. It writes the same files the flag would have, merges what it needs into `package.json` and the README, and runs `bun install` (`--no-install` to skip). A file you have changed since the project was created is left as it is, and you are pointed to what it would have become. `--directory` names a project somewhere else.
 

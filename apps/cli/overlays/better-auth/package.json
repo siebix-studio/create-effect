@@ -1,0 +1,9 @@
+{
+  "workspaces": {
+    "catalog": {
+      "@alchemy.run/better-auth": "^2.0.0-beta.87",
+      "better-auth": "^1.7.5",
+      "kysely": "^0.29.4"
+    }
+  }
+}

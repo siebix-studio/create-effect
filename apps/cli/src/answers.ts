@@ -7,7 +7,9 @@ import * as Path from "effect/Path";
 import * as Runtime from "effect/Runtime";
 import * as Schema from "effect/Schema";
 
+import * as BetterAuth from "./better-auth.ts";
 import * as Database from "./database.ts";
+import * as Domain from "./domain.ts";
 import * as Project from "./project.ts";
 import * as Template from "./template.ts";
 
@@ -34,6 +36,9 @@ export class Cancelled extends Schema.TaggedError<
 export interface Input {
   readonly directory: Option.Option<string>;
   readonly database: Option.Option<Database.Database>;
+  readonly betterAuth: Option.Option<boolean>;
+  /** As typed: a hostname, or `none`. */
+  readonly domain: Option.Option<string>;
   readonly install: Option.Option<boolean>;
   readonly git: Option.Option<boolean>;
   readonly githubActions: Option.Option<boolean>;
@@ -44,6 +49,10 @@ export interface Input {
 export interface Answers {
   readonly project: Project.Project;
   readonly database: Database.Database;
+  /** Sign-in with better-auth. Only with the D1 database, where its users are kept. */
+  readonly betterAuth: boolean;
+  /** Where `prod` is served. `None` is workers.dev. */
+  readonly domain: Option.Option<Domain.Hostname>;
   readonly install: boolean;
   readonly git: boolean;
   /** Also write the deploy workflow. The one question whose default is no. */
@@ -146,6 +155,37 @@ export const resolve = Effect.fn("Answers.resolve")(function* (input: Input) {
     onSome: Effect.succeed,
   });
 
+  // Only asked where it can be added.
+  const canHaveBetterAuth = database === BetterAuth.DATABASE;
+
+  const betterAuth = canHaveBetterAuth
+    ? yield* confirm(input.betterAuth, "Add sign-in with better-auth?", false)
+    : Option.getOrElse(input.betterAuth, () => false);
+
+  if (betterAuth && !canHaveBetterAuth) {
+    return yield* new BetterAuth.NeedsD1({ database, command: "create" });
+  }
+
+  // Opt-in: the domain has to be on the Cloudflare account before the first deploy to `prod`.
+  const domain = yield* Domain.parse(
+    yield* Option.match(input.domain, {
+      onNone: () =>
+        interactive
+          ? ask(
+              Prompt.String({
+                message: `Domain to serve prod from (${Domain.NONE}: workers.dev)`,
+                validate: (value) =>
+                  Domain.parse(value).pipe(
+                    Effect.as(value),
+                    Effect.mapError((error) => error.reason)
+                  ),
+              })
+            )
+          : Effect.succeed(Domain.NONE),
+      onSome: Effect.succeed,
+    })
+  );
+
   const install = yield* confirm(
     input.install,
     "Install dependencies with bun?",
@@ -164,6 +204,8 @@ export const resolve = Effect.fn("Answers.resolve")(function* (input: Input) {
   return {
     project,
     database,
+    betterAuth,
+    domain,
     install,
     git,
     githubActions,
@@ -173,6 +215,8 @@ export const resolve = Effect.fn("Answers.resolve")(function* (input: Input) {
       (overwrite ||
         Option.isNone(input.directory) ||
         Option.isNone(input.database) ||
+        (canHaveBetterAuth && Option.isNone(input.betterAuth)) ||
+        Option.isNone(input.domain) ||
         Option.isNone(input.install) ||
         Option.isNone(input.git) ||
         Option.isNone(input.githubActions)),

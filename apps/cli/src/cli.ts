@@ -11,7 +11,9 @@ import * as Path from "effect/Path";
 
 import PackageJson from "../package.json" with { type: "json" };
 import * as Answers from "./answers.ts";
+import * as BetterAuth from "./better-auth.ts";
 import * as Database from "./database.ts";
+import * as Domain from "./domain.ts";
 import * as Git from "./git.ts";
 import * as PackageManager from "./package-manager.ts";
 import * as ProjectRecord from "./project-record.ts";
@@ -39,6 +41,10 @@ const OVERLAY_NEXT_STEPS: Record<Template.Overlay, readonly string[]> = {
     "store a Neon API key once with `bun alchemy profile edit --add Neon`;",
     'see "Database" in README.md.',
   ],
+  "better-auth": [
+    "People sign up and sign in with an email address and a password, on the website's",
+    'account section; see "Sign-in" in README.md.',
+  ],
 };
 
 const DEPLOYING_A_DATABASE = [
@@ -56,6 +62,20 @@ const directory = Argument.Path("directory", { pathType: "directory" }).pipe(
 const database = Flag.Literals("database", Database.NAMES).pipe(
   Flag.withDescription(
     "Add a database: d1 (Cloudflare's SQLite), neon (Postgres) or none. Asked for when omitted"
+  ),
+  Flag.optional
+);
+
+const betterAuth = Flag.Boolean("better-auth").pipe(
+  Flag.withDescription(
+    "Add sign-in with better-auth: email and password, a form on the website and a protected endpoint (--no-better-auth to skip). Its users are kept in the D1 database, so it needs --database d1. Asked for when the database is d1"
+  ),
+  Flag.optional
+);
+
+const domain = Flag.String("domain").pipe(
+  Flag.withDescription(
+    `Serve the prod stage from this domain, with the API at /api. It has to be on your Cloudflare account. ${Domain.NONE} stays on workers.dev. Asked for when omitted`
   ),
   Flag.optional
 );
@@ -131,10 +151,12 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
 
   const overlays: readonly Template.Overlay[] = [
     ...(answers.database === "none" ? [] : [answers.database]),
+    // After the database, whose Worker it replaces.
+    ...(answers.betterAuth ? ([BetterAuth.NAME] as const) : []),
     ...(answers.githubActions ? (["github-actions"] as const) : []),
   ];
 
-  yield* Template.write(project, { overlays });
+  yield* Template.write(project, { overlays, domain: answers.domain });
 
   // What `add` reads later to know which features the project already has.
   yield* ProjectRecord.write(project.directory, {
@@ -193,8 +215,18 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
       "",
       "To deploy, connect Cloudflare once with `bun alchemy profile edit --add Cloudflare`,",
       "then run `bun run deploy`.",
+      ...Option.match(answers.domain, {
+        onNone: () => [],
+        onSome: (hostname) => [
+          "",
+          `The prod stage is served from ${hostname}, which has to be on that Cloudflare`,
+          'account before `bun run deploy --stage prod`; see "Domain" in README.md.',
+        ],
+      }),
       ...overlays.flatMap((overlay) => ["", ...OVERLAY_NEXT_STEPS[overlay]]),
-      ...(overlays.length > 1 ? ["", ...DEPLOYING_A_DATABASE] : []),
+      ...(answers.database !== "none" && answers.githubActions
+        ? ["", ...DEPLOYING_A_DATABASE]
+        : []),
     ].join("\n")
   );
 
@@ -207,6 +239,10 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
           `bunx ${PackageJson.name}`,
           relativeDirectory,
           `--database ${answers.database}`,
+          ...(answers.database === BetterAuth.DATABASE
+            ? [answers.betterAuth ? "--better-auth" : "--no-better-auth"]
+            : []),
+          `--domain ${Option.getOrElse(answers.domain, () => Domain.NONE)}`,
           answers.install ? "--install" : "--no-install",
           answers.git ? "--git" : "--no-git",
           answers.githubActions ? "--github-actions" : "--no-github-actions",
@@ -225,7 +261,7 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
 
 const overlay = Argument.Literals("feature", Template.OVERLAYS).pipe(
   Argument.withDescription(
-    "What to add. github-actions: the workflow that deploys main and previews each pull request. d1 or neon: a database, where the project has none"
+    "What to add. github-actions: the workflow that deploys main and previews each pull request. d1 or neon: a database, where the project has none. better-auth: sign-in, where the database is d1"
   )
 );
 
@@ -269,8 +305,15 @@ const add = Effect.fn("Cli.add")(function* (input: {
   }
 
   yield* Database.checkRoom(project.name, features, input.overlay);
+  yield* BetterAuth.checkDatabase(features, input.overlay);
 
   const kept = yield* Template.add(project, input.overlay);
+
+  // The workflow and the database meet here: one of the two was just added to the other.
+  const isDeployedDatabaseNew =
+    input.overlay !== BetterAuth.NAME &&
+    Database.among([...features, input.overlay]) !== undefined &&
+    [...features, input.overlay].includes("github-actions");
 
   yield* ProjectRecord.write(project.directory, {
     version: PackageJson.version,
@@ -313,10 +356,7 @@ const add = Effect.fn("Cli.add")(function* (input: {
         ? []
         : ["Run `bun install` to get its dependencies.", ""]),
       ...OVERLAY_NEXT_STEPS[input.overlay],
-      ...(features.length > 0 &&
-      Database.among([...features, input.overlay]) !== undefined
-        ? ["", ...DEPLOYING_A_DATABASE]
-        : []),
+      ...(isDeployedDatabaseNew ? ["", ...DEPLOYING_A_DATABASE] : []),
     ].join("\n")
   );
 
@@ -344,6 +384,10 @@ const addCommand = Command.make("add", {
       command: `${commandPath.join(" ")} d1`,
       description: "Add a D1 database to it",
     },
+    {
+      command: `${commandPath.join(" ")} better-auth`,
+      description: "Add sign-in to it, once it has the D1 database",
+    },
   ]),
   Command.withHandler(add)
 );
@@ -358,6 +402,8 @@ const addCommand = Command.make("add", {
 export const command = Command.make("create-effect", {
   directory,
   database,
+  betterAuth,
+  domain,
   install,
   git,
   githubActions,
@@ -379,6 +425,14 @@ export const command = Command.make("create-effect", {
       {
         command: `${self} my-app --database d1`,
         description: "Create ./my-app with a D1 database",
+      },
+      {
+        command: `${self} my-app --database d1 --better-auth`,
+        description: "Create ./my-app with sign-in on top of that database",
+      },
+      {
+        command: `${self} my-app --domain example.com`,
+        description: "Create ./my-app with prod served from example.com",
       },
       {
         command: `${self} my-app --no-install --no-git`,

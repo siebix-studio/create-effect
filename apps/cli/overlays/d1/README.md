@@ -1,6 +1,6 @@
 ## Database
 
-The API stores every name it greets in [D1](https://developers.cloudflare.com/d1/), Cloudflare's SQLite, and `GET /greetings` reads the last ones back. Under `bun run dev` and `bun run test` the database runs on your machine with the rest.
+The API stores every name it greets in [D1](https://developers.cloudflare.com/d1/), Cloudflare's SQLite, and `GET /api/greetings` reads the last ones back. Under `bun run dev` and `bun run test` the database runs on your machine with the rest.
 
 - `migrations/` holds the schema as numbered `.sql` files. The ones that have not run yet are applied whenever the stack starts or deploys. To change the schema, add a file; a file that has been applied cannot be edited.
 - `apps/api/src/repos/greeting.ts` holds the queries, written with [Effect SQL](https://effect.website). Handlers call the repository and never see SQL.

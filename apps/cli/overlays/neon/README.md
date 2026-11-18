@@ -1,6 +1,6 @@
 ## Database
 
-The API stores every name it greets in a [Neon](https://neon.com) Postgres database, reached through [Hyperdrive](https://developers.cloudflare.com/hyperdrive/), and `GET /greetings` reads the last ones back.
+The API stores every name it greets in a [Neon](https://neon.com) Postgres database, reached through [Hyperdrive](https://developers.cloudflare.com/hyperdrive/), and `GET /api/greetings` reads the last ones back.
 
 The database is a real Neon project, also while you develop: Neon has no local stand-in. Create an API key in the [Neon Console](https://console.neon.tech) and store it once, before the first `bun run dev`:
 

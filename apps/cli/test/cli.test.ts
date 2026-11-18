@@ -17,6 +17,7 @@ import * as TestConsole from "effect/testing/TestConsole";
 
 import PackageJson from "../package.json" with { type: "json" };
 import { command } from "../src/cli.ts";
+import * as Domain from "../src/domain.ts";
 import * as Git from "../src/git.ts";
 import * as PackageManager from "../src/package-manager.ts";
 import * as Process from "../src/process.ts";
@@ -566,6 +567,37 @@ describe("add", () => {
     }).pipe(Effect.provide(TestLayer))
   );
 
+  it.effect("adds sign-in to a project that has the D1 database", () =>
+    Effect.gen(function* () {
+      const created = yield* projectDirectory("my-app");
+      const added = yield* projectDirectory("my-app");
+      const flags = ["--database", "d1", "--no-install", "--no-git"];
+      yield* scaffold([created, ...flags, "--better-auth"]);
+      yield* scaffold([added, ...flags]);
+
+      // It replaces files the database wrote, which are no longer the template's.
+      yield* scaffold(["add", "better-auth", "--directory", added]);
+
+      assert.deepStrictEqual(yield* readAll(added), yield* readAll(created));
+      assert.deepStrictEqual(yield* TestConsole.errorLines, []);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("refuses sign-in in a project without the D1 database", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+      yield* scaffold([directory, "--no-install", "--no-git"]);
+      const before = yield* readAll(directory);
+
+      const error = yield* Effect.flip(
+        scaffold(["add", "better-auth", "--directory", directory])
+      );
+
+      assert.strictEqual(error._tag, "NeedsD1");
+      assert.deepStrictEqual(yield* readAll(directory), before);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
   it.effect("refuses a second database", () =>
     Effect.gen(function* () {
       const directory = yield* projectDirectory("my-app");
@@ -698,7 +730,7 @@ describe("telemetry", () => {
         directory,
         "--no-install",
         "--no-git",
-      ]).pipe(Effect.provide(answering([enter, key("n")])));
+      ]).pipe(Effect.provide(answering([enter, enter, key("n")])));
 
       assert.deepStrictEqual(reported, [
         {
@@ -775,6 +807,8 @@ describe("questions", () => {
             down,
             enter,
             enter,
+            enter,
+            enter,
             key("n"),
             enter,
           ])
@@ -791,7 +825,7 @@ describe("questions", () => {
       assert.include(output, "Run it again without the questions:");
       assert.include(
         output,
-        "--database d1 --install --no-git --no-github-actions"
+        "--database d1 --no-better-auth --domain none --install --no-git --no-github-actions"
       );
       assert.isFalse(
         yield* fs.exists(path.join(directory, ".github/workflows/deploy.yml"))
@@ -808,7 +842,7 @@ describe("questions", () => {
         "--database",
         "none",
         "--no-git",
-      ]).pipe(Effect.provide(answering([key("y"), enter])));
+      ]).pipe(Effect.provide(answering([enter, key("y"), enter])));
 
       assert.deepStrictEqual(steps, ["install"]);
     }).pipe(Effect.provide(TestLayer))
@@ -828,7 +862,7 @@ describe("questions", () => {
           "none",
           "--no-install",
           "--no-git",
-        ]).pipe(Effect.provide(answering([key("y")])));
+        ]).pipe(Effect.provide(answering([enter, key("y")])));
 
         assert.isTrue(
           yield* fs.exists(path.join(directory, ".github/workflows/deploy.yml"))
@@ -876,7 +910,7 @@ describe("questions", () => {
         "--no-install",
         "--no-git",
         "--no-github-actions",
-      ]).pipe(Effect.provide(answering([key("y"), enter])));
+      ]).pipe(Effect.provide(answering([key("y"), enter, enter])));
       assert.isTrue(yield* fs.exists(path.join(directory, "package.json")));
       assert.include((yield* TestConsole.logLines).join("\n"), "--force");
     }).pipe(Effect.provide(TestLayer))
@@ -1027,6 +1061,178 @@ describe("databases", () => {
 
       assert.isFalse(yield* fs.exists(directory));
     }).pipe(Effect.provide(TestLayer))
+  );
+});
+
+describe("better-auth", () => {
+  it.effect("writes sign-in on top of the D1 database", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([directory, "--database", "d1", "--better-auth"]);
+
+      const files = yield* listFiles(directory);
+      assert.includeMembers(
+        [...files],
+        [
+          "migrations/0001_greetings.sql",
+          "apps/api/src/auth.ts",
+          "packages/domain/src/account.ts",
+        ]
+      );
+
+      const record = yield* ProjectRecord.read(directory);
+      assert.deepStrictEqual(
+        Option.map(record, ({ features }) => features),
+        Option.some(["d1", "better-auth"])
+      );
+
+      const contents = yield* Effect.forEach(files, (file) =>
+        fs.readFileString(path.join(directory, file))
+      );
+
+      assert.isFalse(
+        contents.some((content) => content.includes("{{")),
+        "a placeholder was left unfilled"
+      );
+      assert.include(
+        (yield* TestConsole.logLines).join("\n"),
+        '"Sign-in" in README.md'
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("is asked for once the database is D1", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([
+        directory,
+        "--database",
+        "d1",
+        "--domain",
+        "none",
+        "--no-install",
+        "--no-git",
+        "--no-github-actions",
+      ]).pipe(Effect.provide(answering([key("y")])));
+
+      assert.isTrue(
+        yield* fs.exists(path.join(directory, "apps/api/src/auth.ts"))
+      );
+      assert.include(
+        (yield* TestConsole.logLines).join("\n"),
+        "--database d1 --better-auth --domain none"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("refuses to go without the D1 database, and writes nothing", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const directory = yield* projectDirectory("my-app");
+
+      const error = yield* Effect.flip(
+        scaffold([directory, "--database", "neon", "--better-auth"])
+      );
+
+      assert.strictEqual(error._tag, "NeedsD1");
+      assert.isFalse(yield* fs.exists(directory));
+    }).pipe(Effect.provide(TestLayer))
+  );
+});
+
+describe("domains", () => {
+  it.effect("leaves a project on workers.dev unless asked", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([directory]);
+
+      assert.include(
+        yield* fs.readFileString(path.join(directory, "domain.ts")),
+        'const DOMAIN = "";'
+      );
+      assert.notInclude(
+        (yield* TestConsole.logLines).join("\n"),
+        "is served from"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("fills in the domain prod is served from", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([directory, "--domain", "App.Example.com"]);
+
+      assert.include(
+        yield* fs.readFileString(path.join(directory, "domain.ts")),
+        'const DOMAIN = "app.example.com";'
+      );
+      assert.include(
+        (yield* TestConsole.logLines).join("\n"),
+        "The prod stage is served from app.example.com"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("takes the domain from its question", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([
+        directory,
+        "--database",
+        "none",
+        "--no-install",
+        "--no-git",
+        "--no-github-actions",
+      ]).pipe(Effect.provide(answering([...typed("example.com"), enter])));
+
+      assert.include(
+        yield* fs.readFileString(path.join(directory, "domain.ts")),
+        'const DOMAIN = "example.com";'
+      );
+      assert.include(
+        (yield* TestConsole.logLines).join("\n"),
+        "--database none --domain example.com --no-install"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("rejects what is not a hostname, and writes nothing", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const directory = yield* projectDirectory("my-app");
+
+      const error = yield* Effect.flip(
+        scaffold([directory, "--domain", "https://example.com/"])
+      );
+
+      assert.strictEqual(error._tag, "InvalidDomain");
+      assert.isFalse(yield* fs.exists(directory));
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("reads none, or nothing, as no domain", () =>
+    Effect.gen(function* () {
+      assert.isTrue(Option.isNone(yield* Domain.parse("none")));
+      assert.isTrue(Option.isNone(yield* Domain.parse("  ")));
+
+      const single = yield* Effect.flip(Domain.parse("localhost"));
+      assert.include(single.reason, "hostname");
+    })
   );
 });
 

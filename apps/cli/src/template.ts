@@ -2,6 +2,7 @@ import * as Array from "effect/Array";
 import * as CliError from "effect/cli/CliError";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import type * as PlatformError from "effect/PlatformError";
 import * as Predicate from "effect/Predicate";
@@ -46,6 +47,7 @@ const OVERLAY_URLS = {
   "github-actions": [new URL("../overlays/github-actions", import.meta.url)],
   d1: [DATABASE_URL, new URL("../overlays/d1", import.meta.url)],
   neon: [DATABASE_URL, new URL("../overlays/neon", import.meta.url)],
+  "better-auth": [new URL("../overlays/better-auth", import.meta.url)],
 };
 
 export type Overlay = keyof typeof OVERLAY_URLS;
@@ -54,6 +56,7 @@ export const OVERLAYS: readonly [Overlay, ...Overlay[]] = [
   "github-actions",
   "d1",
   "neon",
+  "better-auth",
 ];
 
 /**
@@ -61,7 +64,9 @@ export const OVERLAYS: readonly [Overlay, ...Overlay[]] = [
  * had one cannot take the overlay.
  */
 const REQUIRED_FILES: Partial<Record<Overlay, readonly string[]>> = {
-  neon: ["providers.ts"],
+  d1: ["domain.ts"],
+  neon: ["domain.ts", "providers.ts"],
+  "better-auth": ["domain.ts"],
 };
 
 const TEMPLATE_SOURCE =
@@ -97,10 +102,15 @@ const RENAMED_ENTRIES = new Map([
   ["oxlint.config.template.ts", "oxlint.config.ts"],
 ]);
 
-const render = (content: string, project: Project): string =>
+/**
+ * Fills in a file. `{{domain}}` is only in the template's `domain.ts`, which no overlay replaces,
+ * so an overlay is laid without knowing the domain.
+ */
+const render = (content: string, project: Project, domain = ""): string =>
   content
     .replaceAll("{{name}}", project.name)
-    .replaceAll("{{pascalName}}", stackName(project.name));
+    .replaceAll("{{pascalName}}", stackName(project.name))
+    .replaceAll("{{domain}}", domain);
 
 /** Puts one file in the project. `false` means the file there was left as it is. */
 type Place = (
@@ -158,11 +168,12 @@ const mergeJson = (base: Schema.Json, extra: Schema.Json): Schema.Json => {
  * overlay adds and is merged in, and a Markdown file holds only the sections it adds, which go at
  * the end, so neither is a second copy that could drift from the template's.
  *
- * Any other file replaces the project's, but only while that one is still what the template
- * wrote. In a project that has been worked on, a file its owner changed is left alone. Laying an
- * overlay a second time changes nothing.
+ * Any other file replaces the project's, but only while that one is still what create-effect
+ * wrote: the template's file, or the one of an overlay this one builds on, as `better-auth` builds
+ * on `d1`. In a project that has been worked on, a file its owner changed is left alone. Laying
+ * an overlay a second time changes nothing.
  */
-const layer = (template: string, project: Project): Place =>
+const layer = (sources: readonly string[], project: Project): Place =>
   Effect.fnUntraced(function* (file, content) {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
@@ -195,23 +206,28 @@ const layer = (template: string, project: Project): Place =>
       return true;
     }
 
-    const original = path.join(
-      template,
-      path.relative(project.directory, file)
+    const relative = path.relative(project.directory, file);
+
+    const written = yield* Effect.forEach(
+      sources,
+      Effect.fnUntraced(function* (source) {
+        const original = path.join(source, relative);
+
+        return (
+          (yield* fs.exists(original)) &&
+          render(yield* fs.readFileString(original), project) === existing
+        );
+      })
     );
 
-    const isUntouched =
-      (yield* fs.exists(original)) &&
-      render(yield* fs.readFileString(original), project) === existing;
-
-    return isUntouched ? yield* replace(file, content) : false;
+    return written.some(Boolean) ? yield* replace(file, content) : false;
   });
 
 /** Copies a directory into the project and returns the files that were left as they are. */
 const copyDirectory = (
   from: string,
   to: string,
-  project: Project,
+  fill: (content: string) => string,
   place: Place
 ): Effect.Effect<
   readonly string[],
@@ -235,7 +251,7 @@ const copyDirectory = (
           return yield* copyDirectory(
             source,
             path.join(to, entry),
-            project,
+            fill,
             place
           );
         }
@@ -243,7 +259,7 @@ const copyDirectory = (
         const target = path.join(to, RENAMED_ENTRIES.get(entry) ?? entry);
         const content = yield* fs.readFileString(source);
 
-        const isPlaced = yield* place(target, render(content, project));
+        const isPlaced = yield* place(target, fill(content));
 
         return isPlaced ? [] : [target];
       })
@@ -278,7 +294,12 @@ export const add = Effect.fn("Template.add")(
   function* (project: Project, overlay: Overlay) {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const template = yield* directoryOf(TEMPLATE_URL);
+
+    // Every directory create-effect writes project files from.
+    const sources = yield* Effect.forEach(
+      [TEMPLATE_URL, ...Object.values(OVERLAY_URLS).flat()],
+      directoryOf
+    );
 
     for (const file of REQUIRED_FILES[overlay] ?? []) {
       if (!(yield* fs.exists(path.join(project.directory, file)))) {
@@ -292,8 +313,8 @@ export const add = Effect.fn("Template.add")(
         return yield* copyDirectory(
           yield* directoryOf(url),
           project.directory,
-          project,
-          layer(template, project)
+          (content) => render(content, project),
+          layer(sources, project)
         );
       })
     );
@@ -312,16 +333,20 @@ export const add = Effect.fn("Template.add")(
 
 export interface Options {
   readonly overlays: readonly Overlay[];
+  /** The hostname `prod` is served from. `None` leaves the project on workers.dev. */
+  readonly domain: Option.Option<string>;
 }
 
 export const write = Effect.fn("Template.write")(function* (
   project: Project,
   options: Options
 ) {
+  const domain = Option.getOrElse(options.domain, () => "");
+
   yield* copyDirectory(
     yield* directoryOf(TEMPLATE_URL),
     project.directory,
-    project,
+    (content) => render(content, project, domain),
     replace
   ).pipe(templateError("write the project"));
 

@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@alchemy.run/better-auth": "catalog:",
+    "better-auth": "catalog:",
+    "kysely": "catalog:"
+  }
+}
