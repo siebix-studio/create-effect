@@ -4,12 +4,14 @@ import * as Flag from "effect/cli/Flag";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 
 import PackageJson from "../package.json" with { type: "json" };
 import * as Answers from "./answers.ts";
 import * as Git from "./git.ts";
 import * as PackageManager from "./package-manager.ts";
+import * as ProjectRecord from "./project-record.ts";
 import * as Project from "./project.ts";
 import * as Template from "./template.ts";
 
@@ -95,8 +97,16 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
   const relativeDirectory =
     path.relative(path.resolve(), project.directory) || ".";
 
-  yield* Template.write(project, {
-    overlays: answers.githubActions ? ["github-actions"] : [],
+  const overlays: readonly Template.Overlay[] = answers.githubActions
+    ? ["github-actions"]
+    : [];
+
+  yield* Template.write(project, { overlays });
+
+  // What `add` reads later to know which features the project already has.
+  yield* ProjectRecord.write(project.directory, {
+    version: PackageJson.version,
+    features: overlays,
   });
   yield* done(`Created ${project.name} in ${project.directory}`);
 
@@ -190,7 +200,27 @@ const add = Effect.fn("Cli.add")(function* (input: {
   const packageManager = yield* PackageManager.Service;
 
   const project = yield* Project.fromExisting(path.resolve(input.directory));
+
+  // A project from before the record existed has none. It gets one here.
+  const features = Option.match(yield* ProjectRecord.read(project.directory), {
+    onNone: (): readonly string[] => [],
+    onSome: (record) => record.features,
+  });
+
+  if (features.includes(input.overlay)) {
+    yield* done(
+      `${project.name} already has ${input.overlay}. Nothing was changed.`
+    );
+
+    return;
+  }
+
   const kept = yield* Template.add(project, input.overlay);
+
+  yield* ProjectRecord.write(project.directory, {
+    version: PackageJson.version,
+    features: [...features, input.overlay],
+  });
 
   yield* done(`Added ${input.overlay} to ${project.name}`);
 

@@ -57,7 +57,7 @@ A project created without it can get the workflow later. Run this inside it:
 bunx @siebix/create-effect add github-actions
 ```
 
-It writes the same files the flag would have, merges what it needs into `package.json` and the README, and runs `bun install` (`--no-install` to skip). A file you have changed since the project was created is left as it is, and you are pointed to what it would have become. `--directory` names a project somewhere else.
+Every project has a `create-effect.json` that records which features it has, so `add` tells you when there is nothing left to add. It writes the same files the flag would have, merges what it needs into `package.json` and the README, and runs `bun install` (`--no-install` to skip). A file you have changed since the project was created is left as it is, and you are pointed to what it would have become. `--directory` names a project somewhere else.
 
 ## Links
 

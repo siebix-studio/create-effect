@@ -11,6 +11,8 @@ A full-stack Effect app on Cloudflare, deployed with [Alchemy](https://alchemy.r
 | `apps/web` | The website, a prerendered [Foldkit](https://foldkit.dev) app |
 | `alchemy.run.ts` | The stack that deploys both |
 
+`create-effect.json` records what was generated. Keep it: `bunx @siebix/create-effect add github-actions` reads it to add a deploy workflow later.
+
 ## Development
 
 ```sh

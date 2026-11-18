@@ -18,6 +18,7 @@ import { command } from "../src/cli.ts";
 import * as Git from "../src/git.ts";
 import * as PackageManager from "../src/package-manager.ts";
 import * as Process from "../src/process.ts";
+import * as ProjectRecord from "../src/project-record.ts";
 import * as Project from "../src/project.ts";
 
 const TestLayer = Layer.mergeAll(BunServices.layer, TestConsole.layer);
@@ -369,6 +370,80 @@ describe("create-effect", () => {
       const error = yield* Effect.flip(scaffold([]));
 
       assert.strictEqual(error._tag, "MissingProjectName");
+    }).pipe(Effect.provide(TestLayer))
+  );
+});
+
+describe("the project record", () => {
+  const features = Effect.fn("Test.features")(function* (directory: string) {
+    const record = yield* ProjectRecord.read(directory);
+
+    return Option.map(record, ({ features: recorded }) => recorded);
+  });
+
+  it.effect("says which features a new project has", () =>
+    Effect.gen(function* () {
+      const plain = yield* projectDirectory("my-app");
+      const deployed = yield* projectDirectory("my-app");
+
+      yield* scaffold([plain, "--no-install", "--no-git"]);
+      yield* scaffold([
+        deployed,
+        "--no-install",
+        "--no-git",
+        "--github-actions",
+      ]);
+
+      assert.deepStrictEqual(yield* features(plain), Option.some([]));
+      assert.deepStrictEqual(
+        yield* features(deployed),
+        Option.some(["github-actions"])
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("stops add when the project already has the feature", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+      yield* scaffold([
+        directory,
+        "--github-actions",
+        "--no-install",
+        "--no-git",
+      ]);
+
+      const steps = yield* scaffold([
+        "add",
+        "github-actions",
+        "--directory",
+        directory,
+      ]);
+
+      assert.deepStrictEqual(steps, []);
+      assert.include(
+        (yield* TestConsole.logLines).join("\n"),
+        "already has github-actions"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("is written by add for a project that has none", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+      yield* scaffold([directory, "--no-install", "--no-git"]);
+      yield* fs.remove(path.join(directory, ProjectRecord.FILE));
+
+      yield* scaffold(["add", "github-actions", "--directory", directory]);
+
+      assert.deepStrictEqual(
+        yield* features(directory),
+        Option.some(["github-actions"])
+      );
+      assert.isTrue(
+        yield* fs.exists(path.join(directory, ".github/workflows/deploy.yml"))
+      );
     }).pipe(Effect.provide(TestLayer))
   );
 });

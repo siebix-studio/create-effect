@@ -5,6 +5,7 @@
 - `packages/domain`: the schemas and the HTTP contract (`api.ts`) shared by both sides.
 - `apps/api`: the Effect HTTP API, a Cloudflare Worker that implements the contract.
 - `apps/web`: the website, a prerendered (SSG) Foldkit app that calls the API through a typed client derived from the contract.
+- `create-effect.json`: what create-effect wrote into the project. `bunx @siebix/create-effect add <feature>` reads and updates it; don't edit it by hand.
 - Root: the Alchemy stack (`alchemy.run.ts`), a test that runs the whole stack locally (`test/integ.test.ts`), the shared lint, format and TypeScript config, a lefthook pre-commit hook (`lefthook.yml`) that runs `ultracite fix` on staged files, and `.mcp.json`, which gives agents the Foldkit DevTools.
 
 Commands, from the root: `bun run dev` (`alchemy dev`), `bun run check` (lint and format), `bun run fix`, `bun run typecheck`, `bun run test`, `bun run deploy`.
