@@ -19,6 +19,7 @@
       "@alchemy.run/test": "^2.0.0-beta.87",
       "foldkit": "0.170.0",
       "@foldkit/devtools": "0.170.0",
+      "@foldkit/devtools-mcp": "0.26.0",
       "@foldkit/oxlint-plugin": "0.15.4",
       "@foldkit/vite-plugin": "0.29.0",
       "vite": "^8.3.8",

@@ -37,6 +37,7 @@
       }
     ]
   },
-  // The Alchemy stack at the root. Each app and package has its own tsconfig.
-  "include": ["*.ts", "test"]
+  // The Alchemy stack at the root, and any further stacks in stacks/. Each app and package has
+  // its own tsconfig.
+  "include": ["*.ts", "stacks", "test"]
 }

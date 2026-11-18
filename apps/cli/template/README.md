@@ -1,6 +1,6 @@
 # {{name}}
 
-A full-stack Effect app on Cloudflare, deployed with [Alchemy](https://alchemy.run). Created with [create-effect](https://effect.siebix.com).
+A full-stack Effect app on Cloudflare, deployed with [Alchemy](https://alchemy.run). Created with [create-effect](https://effect.siebix.com) by [Siebix](https://siebix.com).
 
 ## Layout
 
@@ -10,6 +10,8 @@ A full-stack Effect app on Cloudflare, deployed with [Alchemy](https://alchemy.r
 | `apps/api` | The Effect HTTP API, a Cloudflare Worker |
 | `apps/web` | The website, a prerendered [Foldkit](https://foldkit.dev) app |
 | `alchemy.run.ts` | The stack that deploys both |
+
+`create-effect.json` records what was generated. Keep it: `bunx @siebix/create-effect add github-actions` reads it to add a deploy workflow later.
 
 ## Development
 
@@ -27,6 +29,12 @@ A [lefthook](https://lefthook.dev) pre-commit hook runs `ultracite fix` on stage
 
 In VS Code, install the [Oxc extension](https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode); `.vscode/settings.json` formats on save and applies lint fixes with it.
 
+## Agents
+
+`AGENTS.md` tells coding agents how the project is laid out. `.mcp.json` gives them the [Foldkit DevTools](https://foldkit.dev/ai/mcp): with `bun run dev` running and the website open in a browser tab, an agent can read the website's Model and Message history, replay past states and dispatch Messages. Agents that read `.mcp.json`, such as Claude Code, pick it up when they start in this folder.
+
+The tools return whatever is in the Model, so keep credentials out of it. To switch them off, set `devToolsMcpPort: false` in the `foldkit()` options in `apps/web/vite.config.ts`.
+
 ## Deploying
 
 Deploying needs Cloudflare credentials. Connect your account once:
@@ -43,3 +51,7 @@ bun run destroy
 ```
 
 Each stage is its own copy of the stack: `bun run deploy --stage prod`. The first deploy also creates this project's state store on your account, a Worker named `{{name}}-state`, which is where Alchemy remembers what it deployed.
+
+## Observability
+
+Deployed stages send Workers Logs and Traces to the Cloudflare dashboard (Workers & Pages → the `Api` Worker → Observability). Every `Effect.withSpan` in the API shows up as a span in the request's trace, next to Cloudflare's own fetch, KV, R2 and D1 spans. Nothing runs or is sent anywhere during `bun run dev` or `bun run test`.
