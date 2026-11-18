@@ -20,6 +20,8 @@ const REPORTS_PER_MINUTE = 20;
 /** How long Cloudflare and browsers may answer `/stats` without asking the Worker. */
 const STATS_MAX_AGE_SECONDS = 60;
 
+const OK = 200;
+
 /** Unique within the Cloudflare account. */
 const THROTTLE_NAMESPACE = 7310;
 
@@ -72,11 +74,13 @@ export default class Api extends Cloudflare.Worker<Api>()(
         stats: Effect.fn("Api.stats")(function* () {
           yield* HttpEffect.appendPreResponseHandler((_request, response) =>
             Effect.succeed(
-              HttpServerResponse.setHeader(
-                response,
-                "Cache-Control",
-                `public, max-age=${STATS_MAX_AGE_SECONDS}`
-              )
+              response.status === OK
+                ? HttpServerResponse.setHeader(
+                    response,
+                    "Cache-Control",
+                    `public, max-age=${STATS_MAX_AGE_SECONDS}`
+                  )
+                : response
             )
           );
 
