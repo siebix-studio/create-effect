@@ -417,28 +417,45 @@ const PLATFORM_NAMES: Readonly<Record<string, string>> = {
   win32: "Windows",
 };
 
-const labelled = (
+// NOTE: The API counts whatever name it is sent, so only the names listed above are printed. A
+// stranger's event can then add to a number, but never put words on the page.
+const known = (
   tally: Stats["features"],
-  label: (value: string) => string
+  labels: Readonly<Record<string, string>>,
+  label: (name: string) => string
 ): ReadonlyArray<Share> =>
   pipe(
-    Record.toEntries(tally),
-    Array.map(([value, projects]) => ({ label: label(value), projects }))
+    Record.toEntries(labels),
+    Array.map(([value, name]) => ({
+      label: label(name),
+      projects: tally[value] ?? 0,
+    })),
+    Array.filter((share) => share.projects > 0)
   );
 
-const sharesOf = (stats: Stats): ReadonlyArray<Share> => [
-  { label: "Installed dependencies", projects: stats.installed },
-  { label: "Initialized a git repository", projects: stats.withGit },
-  ...labelled(
-    stats.features,
-    (feature) => FEATURE_LABELS[feature] ?? `Created with ${feature}`
-  ),
-  { label: "Answered a question at the prompt", projects: stats.interactive },
-  ...labelled(
+const sharesOf = (stats: Stats): ReadonlyArray<Share> => {
+  const platforms = known(
     stats.platforms,
-    (platform) => `Ran on ${PLATFORM_NAMES[platform] ?? platform}`
-  ),
-];
+    PLATFORM_NAMES,
+    (name) => `Ran on ${name}`
+  );
+
+  // Every project has a platform, so the rest ran on one that is not listed.
+  const elsewhere =
+    stats.projects -
+    Number.sumAll(Array.map(platforms, (share) => share.projects));
+
+  return [
+    { label: "Installed dependencies", projects: stats.installed },
+    { label: "Initialized a git repository", projects: stats.withGit },
+    ...known(stats.features, FEATURE_LABELS, (name) => name),
+    { label: "Answered a question at the prompt", projects: stats.interactive },
+    ...platforms,
+    ...(elsewhere > 0
+      ? [{ label: "Ran on another system", projects: elsewhere }]
+      : []),
+  ];
+};
 
 const PERCENT = 100;
 
@@ -481,7 +498,7 @@ const usageView = (stats: Stats, h: HtmlBuilder<Message>): Html =>
       h.p(
         [h.Class("max-w-xl text-pretty text-neutral-600")],
         [
-          `How the ${formatProjects(stats.projects)} so far were created. Each run reports the options that were chosen and nothing else: no name, no path. `,
+          `How the ${formatProjects(stats.projects)} so far ${stats.projects === 1 ? "was" : "were"} created. Each run reports the options that were chosen and nothing else: no name, no path. `,
           h.code([h.Class(INLINE_CODE_CLASS)], ["DO_NOT_TRACK=1"]),
           " turns that off.",
         ]

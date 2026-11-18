@@ -116,6 +116,30 @@ describe("view", () => {
     );
   });
 
+  test("the home page prints no name it does not know", () => {
+    const loaded = update(
+      model(AppRoute.Home()),
+      Message.SettledFetchUsage({
+        result: Result.succeed({
+          ...STATS,
+          projects: 1,
+          features: { "your-mom": 1 },
+          platforms: { "your-mom": 1 },
+        }),
+      })
+    );
+
+    scene(
+      { update, view },
+      given(loaded.model),
+      expect(text("your-mom", { exact: false })).toBeAbsent(),
+      expect(text("Ran on another system")).toExist(),
+      expect(
+        text("How the 1 project so far was created.", { exact: false })
+      ).toExist()
+    );
+  });
+
   test("the home page stays as it is when the API cannot be reached", () => {
     const failed = update(
       model(AppRoute.Home()),
