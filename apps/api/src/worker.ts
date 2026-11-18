@@ -31,7 +31,7 @@ export default class Api extends Cloudflare.Worker<Api>()(
     const props = {
       main: import.meta.url,
       compatibility: { date: "2026-08-25" },
-      // Invocation logs would record each request's IP address.
+      // No per-request logs, so nothing about who sent a request is kept.
       observability: {
         enabled: true,
         logs: { enabled: true, invocationLogs: false },
@@ -45,8 +45,7 @@ export default class Api extends Cloudflare.Worker<Api>()(
   Effect.gen(function* () {
     const usage = yield* Usage;
 
-    // Answers cacheable responses from the edge, so reading the numbers rarely wakes the
-    // Durable Object.
+    // Cacheable responses are answered from the edge, without running the Worker.
     yield* Cloudflare.cache();
 
     const throttle = yield* Cloudflare.RateLimit("Throttle", {

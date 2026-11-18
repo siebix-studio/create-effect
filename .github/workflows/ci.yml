@@ -45,7 +45,7 @@ jobs:
 
   test:
     name: Test
-    # CLI tests and Foldkit scene tests (happy-dom) need no secrets, so forks run them too.
+    # Every test runs on the runner itself and needs no secrets, so forks run them too.
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 15

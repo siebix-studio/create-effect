@@ -417,8 +417,7 @@ const PLATFORM_NAMES: Readonly<Record<string, string>> = {
   win32: "Windows",
 };
 
-// NOTE: The API counts whatever name it is sent, so only the names listed above are printed. A
-// stranger's event can then add to a number, but never put words on the page.
+// NOTE: The API counts any name it is sent, so only the names listed above are printed.
 const known = (
   tally: Stats["features"],
   labels: Readonly<Record<string, string>>,
