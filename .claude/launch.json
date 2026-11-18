@@ -14,6 +14,12 @@
         "--strictPort"
       ],
       "port": 4180
+    },
+    {
+      "name": "dev",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
     }
   ]
 }

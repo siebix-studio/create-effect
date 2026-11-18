@@ -6,8 +6,13 @@ import path from "node:path";
 
 import { afterAll, expect, test } from "vitest";
 
+// Test projects are not counted.
 const exec = (command: string, args: readonly string[], cwd: string) =>
-  execFileSync(command, args, { cwd, stdio: "pipe" });
+  execFileSync(command, args, {
+    cwd,
+    stdio: "pipe",
+    env: { ...process.env, DO_NOT_TRACK: "1" },
+  });
 
 const BIN = path.join(import.meta.dirname, "../src/bin.ts");
 

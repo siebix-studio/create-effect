@@ -14,12 +14,14 @@ import * as Ref from "effect/Ref";
 import * as Terminal from "effect/Terminal";
 import * as TestConsole from "effect/testing/TestConsole";
 
+import PackageJson from "../package.json" with { type: "json" };
 import { command } from "../src/cli.ts";
 import * as Git from "../src/git.ts";
 import * as PackageManager from "../src/package-manager.ts";
 import * as Process from "../src/process.ts";
 import * as ProjectRecord from "../src/project-record.ts";
 import * as Project from "../src/project.ts";
+import * as Telemetry from "../src/telemetry.ts";
 
 const TestLayer = Layer.mergeAll(BunServices.layer, TestConsole.layer);
 
@@ -28,9 +30,15 @@ const run = Command.runWith(command, { version: "0.0.0" });
 const unavailable = (program: string) =>
   new Process.CommandUnavailable({ command: program, cause: "not found" });
 
+const silent = Telemetry.Service.of({
+  enabled: false,
+  record: () => Effect.void,
+});
+
 const stepLayers = (
   steps: Ref.Ref<readonly string[]>,
-  failing: readonly string[] = []
+  failing: readonly string[] = [],
+  telemetry: Telemetry.Interface = silent
 ) => {
   const step = (name: string) =>
     failing.includes(name)
@@ -48,9 +56,30 @@ const stepLayers = (
     Layer.succeed(
       PackageManager.Service,
       PackageManager.Service.of({ install: () => step("install") })
-    )
+    ),
+    Layer.succeed(Telemetry.Service, telemetry)
   );
 };
+
+/** What the command reported, also when it failed. */
+const reporting = Effect.fn("Test.reporting")(function* (
+  args: readonly string[]
+) {
+  const steps = yield* Ref.make<readonly string[]>([]);
+  const reported = yield* Ref.make<readonly Telemetry.Event[]>([]);
+
+  const telemetry = Telemetry.Service.of({
+    enabled: true,
+    record: (event) => Ref.update(reported, (events) => [...events, event]),
+  });
+
+  yield* run(args).pipe(
+    Effect.provide(stepLayers(steps, [], telemetry)),
+    Effect.ignore
+  );
+
+  return yield* Ref.get(reported);
+});
 
 const scaffold = Effect.fn("Test.scaffold")(function* (
   args: readonly string[],
@@ -536,6 +565,109 @@ describe("add", () => {
 
       assert.strictEqual(error._tag, "NotAProject");
       assert.deepStrictEqual(yield* fs.readDirectory(directory), []);
+    }).pipe(Effect.provide(TestLayer))
+  );
+});
+
+describe("telemetry", () => {
+  const environment = {
+    cliVersion: PackageJson.version,
+    platform: process.platform,
+  };
+
+  it.effect("reports what a project was created with", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+
+      const reported = yield* reporting([
+        directory,
+        "--no-install",
+        "--github-actions",
+      ]);
+
+      assert.deepStrictEqual(reported, [
+        {
+          command: "create",
+          features: ["github-actions"],
+          install: false,
+          git: true,
+          interactive: false,
+          ...environment,
+        },
+      ]);
+      assert.include(
+        (yield* TestConsole.logLines).join("\n"),
+        "DO_NOT_TRACK=1"
+      );
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("reports that an answer came from a prompt", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+
+      const reported = yield* reporting([
+        directory,
+        "--no-install",
+        "--no-git",
+      ]).pipe(Effect.provide(answering([key("n")])));
+
+      assert.deepStrictEqual(reported, [
+        {
+          command: "create",
+          features: [],
+          install: false,
+          git: false,
+          interactive: true,
+          ...environment,
+        },
+      ]);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("reports a feature that add brought to a project", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+      yield* scaffold([directory, "--no-install", "--no-git"]);
+
+      const add = ["add", "github-actions", "--directory", directory];
+
+      assert.deepStrictEqual(yield* reporting([...add, "--no-install"]), [
+        {
+          command: "add",
+          features: ["github-actions"],
+          install: false,
+          ...environment,
+        },
+      ]);
+
+      // Nothing is left to add.
+      assert.deepStrictEqual(yield* reporting(add), []);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("reports nothing when no project was created", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const directory = yield* projectDirectory("my-app");
+      yield* fs.makeDirectory(directory, { recursive: true });
+      yield* fs.writeFileString(path.join(directory, "notes.txt"), "mine");
+
+      assert.deepStrictEqual(yield* reporting([directory]), []);
+    }).pipe(Effect.provide(TestLayer))
+  );
+
+  it.effect("does not mention counting to someone who opted out", () =>
+    Effect.gen(function* () {
+      const directory = yield* projectDirectory("my-app");
+
+      yield* scaffold([directory]);
+
+      assert.notInclude(
+        (yield* TestConsole.logLines).join("\n"),
+        "DO_NOT_TRACK"
+      );
     }).pipe(Effect.provide(TestLayer))
   );
 });
