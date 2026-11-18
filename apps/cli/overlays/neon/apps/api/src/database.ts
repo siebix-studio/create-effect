@@ -8,6 +8,9 @@ import { Effect } from "effect";
 export const Database = Neon.Project("Database", {
   // A project cannot move to another region, so choose before it holds data you care about.
   region: "aws-us-east-1",
+  // Six hours of history to branch or restore from, the most Neon's Free plan keeps. Alchemy asks
+  // for a day otherwise, which that plan refuses.
+  historyRetentionSeconds: 21_600,
   migrations: "./migrations",
 });
 
