@@ -15,3 +15,4 @@ Commands, from the root: `bun run dev` (`alchemy dev`), `bun run check` (lint an
 - `bun run dev` and `bun run test` run locally and keep their state in `.alchemy/`; only deployed stages touch Cloudflare.
 - The website follows Foldkit's Elm-style architecture: a Schema `Model`, past-tense `Message`s, a pure `update` and `view`, side effects only in `Command`s. See https://foldkit.dev before writing Foldkit code.
 - Effect is v4. HTTP modules live under `effect/http` and `effect/http-api`.
+- The API Worker provides `Cloudflare.Telemetry()`, so deployed stages have Workers Logs and Traces in the Cloudflare dashboard. Wrap work worth seeing there in `Effect.withSpan` (or define it with `Effect.fn`); spans nest in the request's trace. Nothing else is needed: no OTLP endpoint, no flush.

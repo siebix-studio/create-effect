@@ -8,6 +8,8 @@ export const GreetingsLive = HttpApiBuilder.group(
   (handlers) =>
     handlers.handleAll({
       greet: ({ params }) =>
-        Effect.succeed({ message: `Hello, ${params.name}!` }),
+        Effect.succeed({ message: `Hello, ${params.name}!` }).pipe(
+          Effect.withSpan("greet", { attributes: { name: params.name } })
+        ),
     })
 );

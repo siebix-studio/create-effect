@@ -39,3 +39,7 @@ bun run destroy
 ```
 
 Each stage is its own copy of the stack: `bun run deploy --stage prod`. The first deploy also creates this project's state store on your account, a Worker named `{{name}}-state`, which is where Alchemy remembers what it deployed.
+
+## Observability
+
+Deployed stages send Workers Logs and Traces to the Cloudflare dashboard (Workers & Pages → the `Api` Worker → Observability). Every `Effect.withSpan` in the API shows up as a span in the request's trace, next to Cloudflare's own fetch, KV, R2 and D1 spans. Nothing runs or is sent anywhere during `bun run dev` or `bun run test`.
