@@ -13,7 +13,7 @@ export type Tally = typeof Tally.Type;
 
 export const Day = Schema.Struct({
   /** A UTC date, `2026-11-18`. */
-  day: Schema.String,
+  day: Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/u)),
   projects: Schema.Int,
 });
 
