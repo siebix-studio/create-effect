@@ -133,16 +133,30 @@ const FEATURES: ReadonlyArray<Feature> = [
       "One stack file deploys both to Cloudflare, and every stage is its own copy.",
   },
   {
+    title: "A deploy workflow when you want one",
+    description:
+      "--github-actions adds a workflow that deploys main and gives every pull request its own preview. create-effect add github-actions brings it to a project you already have.",
+  },
+  {
+    title: "Logs and traces",
+    description:
+      "Deployed stages send Workers Logs and Traces to the Cloudflare dashboard, with every Effect span in its request's trace.",
+  },
+  {
+    title: "Ready for coding agents",
+    description:
+      "An AGENTS.md that explains the project, and an .mcp.json that lets an agent inspect the running website through the Foldkit DevTools.",
+  },
+  {
     title: "Tooling that is already set up",
     description:
-      "Ultracite, oxlint with Effect rules, oxfmt and effect-tsgo, passing from the first commit.",
+      "Ultracite, oxlint with Effect rules, oxfmt, effect-tsgo and a pre-commit hook, passing from the first commit.",
   },
 ];
 
 const ROADMAP: ReadonlyArray<string> = [
   "A database: D1 or Neon Postgres",
   "Sign-in with better-auth",
-  "CI/CD with a preview for every pull request",
 ];
 
 const heroView = (h: HtmlBuilder<Message>): Html =>
