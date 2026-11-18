@@ -8,11 +8,7 @@ import * as Schema from "effect/Schema";
 /** The file in a project's root that says what create-effect wrote into it. */
 export const FILE = "create-effect.json";
 
-/** Served by the website (`apps/web/public/schema.json`), so editors can check the file. */
-const SCHEMA_URL = "https://effect.siebix.com/schema.json";
-
 export const ProjectRecord = Schema.Struct({
-  $schema: Schema.String,
   /** The create-effect version that last changed the project. */
   version: Schema.String,
   /** A newer create-effect may have added features this one does not know, so any name is read. */
@@ -90,16 +86,13 @@ export const read = Effect.fn("ProjectRecord.read")(function* (
 
 export const write = Effect.fn("ProjectRecord.write")(function* (
   directory: string,
-  record: Omit<ProjectRecord, "$schema">
+  record: ProjectRecord
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const file = path.join(directory, FILE);
 
-  const content = yield* Schema.encodeEffect(Json)({
-    $schema: SCHEMA_URL,
-    ...record,
-  }).pipe(Effect.orDie);
+  const content = yield* Schema.encodeEffect(Json)(record).pipe(Effect.orDie);
 
   yield* fs
     .writeFileString(file, `${inlineShortArrays(content)}\n`)

@@ -1,6 +1,6 @@
 # {{name}}
 
-A full-stack Effect app on Cloudflare, deployed with [Alchemy](https://alchemy.run). Created with [create-effect](https://effect.siebix.com).
+A full-stack Effect app on Cloudflare, deployed with [Alchemy](https://alchemy.run). Created with [create-effect](https://effect.siebix.com) by [Siebix](https://siebix.com).
 
 ## Layout
 
