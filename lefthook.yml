@@ -1,7 +1,6 @@
 pre-commit:
   jobs:
-    # Lint skips the CLI's template and overlays, and fails when it is handed nothing else, so
-    # those files are only formatted.
+    # Lint skips these folders and fails when handed nothing else, so they are only formatted.
     - run: bunx oxfmt {staged_files}
       glob:
         - "apps/cli/template/**"

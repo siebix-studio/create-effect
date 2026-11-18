@@ -13,8 +13,7 @@ export const GreetingsLive = HttpApiBuilder.group(
   Effect.fnUntraced(function* (handlers) {
     const greetings = yield* GreetingRepo.Service;
 
-    // A database that fails is not something a caller can act on, so it is a defect (a 500) and not
-    // an error declared on the endpoint.
+    // A caller cannot act on a failing database, so that is a defect (a 500), not a declared error.
     return handlers.handleAll({
       greet: ({ params }) =>
         greetings

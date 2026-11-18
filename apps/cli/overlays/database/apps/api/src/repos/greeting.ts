@@ -23,7 +23,6 @@ export class Service extends Context.Service<Service, Interface>()(
 
 const Row = Schema.Struct({ name: Schema.String });
 
-// The SQL is written against `SqlClient`, not a driver. The Worker decides which database it runs on.
 export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {

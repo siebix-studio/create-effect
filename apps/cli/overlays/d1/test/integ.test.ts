@@ -25,7 +25,6 @@ test(
     expect(response.status).toBe(200);
     expect(yield* response.json).toStrictEqual({ message: "Hello, Ada!" });
 
-    // Read back from the local D1 database, which the migration in `migrations/` set up.
     const recent = yield* HttpClient.get(`${api}/greetings`);
 
     expect(recent.status).toBe(200);

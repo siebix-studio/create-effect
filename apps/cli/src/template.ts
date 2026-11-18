@@ -38,9 +38,8 @@ const TEMPLATE_URL = new URL("../template", import.meta.url);
 const DATABASE_URL = new URL("../overlays/database", import.meta.url);
 
 /**
- * What a flag, or `add` in a project that already exists, lays over the template: one directory
- * or several, in order. Both databases start with what they share. See `layer` for how an
- * overlay's files land.
+ * What a flag, or `add` in a project that already exists, lays over the template, as directories
+ * in order. See `layer` for how an overlay's files land.
  */
 const OVERLAY_URLS = {
   "github-actions": [new URL("../overlays/github-actions", import.meta.url)],
@@ -57,9 +56,8 @@ export const OVERLAYS: readonly [Overlay, ...Overlay[]] = [
 ];
 
 /**
- * Template files an overlay builds on without replacing them. A project created before the
- * template had one cannot take the overlay: Neon is registered in `providers.ts`, which only
- * works in a project whose stack reads its providers from there.
+ * Template files an overlay builds on without replacing them. A project from before the template
+ * had one cannot take the overlay.
  */
 const REQUIRED_FILES: Partial<Record<Overlay, readonly string[]>> = {
   neon: ["providers.ts"],

@@ -34,7 +34,6 @@ const OVERLAY_NEXT_STEPS: Record<Template.Overlay, readonly string[]> = {
     "The D1 database runs on your machine under `bun run dev` and `bun run test`;",
     'see "Database" in README.md.',
   ],
-  // Neon has no local stand-in, so the first `bun run dev` already creates a database there.
   neon: [
     "The database is a real Neon project, in development too. Before `bun run dev`,",
     "store a Neon API key once with `bun alchemy profile edit --add Neon`;",
@@ -42,7 +41,6 @@ const OVERLAY_NEXT_STEPS: Record<Template.Overlay, readonly string[]> = {
   ],
 };
 
-/** What two features need from each other, said once both are in the project. */
 const DEPLOYING_A_DATABASE = [
   "The deploy workflow does not know about the database yet. What it needs is at",
   'the end of "Database" in README.md.',

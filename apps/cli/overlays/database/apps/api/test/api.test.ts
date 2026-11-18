@@ -7,8 +7,6 @@ import { HttpApiTest } from "effect/http-api";
 import { GreetingsLive } from "../src/handlers.ts";
 import * as GreetingRepo from "../src/repos/greeting.ts";
 
-// Stands in for the database, so these tests are about the handlers. `test/integ.test.ts` at the
-// root runs the real SQL.
 const GreetingRepoMemory = Layer.effect(
   GreetingRepo.Service,
   Effect.gen(function* () {

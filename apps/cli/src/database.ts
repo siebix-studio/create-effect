@@ -3,7 +3,6 @@ import type * as Prompt from "effect/cli/Prompt";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
-/** The databases a project can have. Each is an overlay of the same name. */
 export const DATABASES = ["d1", "neon"] as const;
 
 export const NAMES = ["none", ...DATABASES] as const;
@@ -30,10 +29,9 @@ export const CHOICES: readonly Prompt.SelectChoice<Database>[] = [
 const isDatabase = (feature: string): feature is (typeof DATABASES)[number] =>
   DATABASES.some((database) => database === feature);
 
-/** The database among a project's features, if it has one. */
 export const among = (features: readonly string[]) => features.find(isDatabase);
 
-/** A project has one database: both write the same Worker, repository and migration. */
+/** Both databases write the same Worker, repository and migration, so a project has one. */
 export class AlreadyPresent extends Schema.TaggedError<
   AlreadyPresent,
   { readonly brand: unique symbol }
@@ -47,7 +45,6 @@ export class AlreadyPresent extends Schema.TaggedError<
   }
 }
 
-/** Fails when `requested` is a database and the project's features already hold one. */
 export const checkRoom = (
   project: string,
   features: readonly string[],

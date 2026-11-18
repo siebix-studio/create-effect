@@ -28,8 +28,7 @@
         // Effect diagnostics are reported by Oxlint; keep the LSP for refactors,
         // quickinfo and completions so they don't show up twice.
         "diagnostics": false,
-        // Effect's HTTP and SQL modules and test helpers are marked unstable; this app builds on them
-        // knowingly.
+        // Effect's HTTP and SQL modules and test helpers are marked unstable; this app builds on them knowingly.
         "allowedUnstableApis": [
           "@effect/vitest",
           "effect/http",

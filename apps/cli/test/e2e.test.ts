@@ -36,8 +36,8 @@ const create = (name: string, flags: readonly string[]) => {
   return project;
 };
 
-// The deploy workflow brings a stack file of its own and another alchemy.run.ts, and a database
-// another Worker and stack test, so each shape of the project is checked, and the two together.
+// Each overlay replaces files of the template, so each shape of the project is checked, and two
+// overlays together.
 test.each([
   { name: "my-app", flags: [] },
   { name: "my-ci-app", flags: ["--github-actions"] },
@@ -55,8 +55,7 @@ test.each([
   5 * MINUTES
 );
 
-// Neon has no local stand-in: the project's stack test creates a real Neon project. So that test
-// only runs where Neon credentials are set, and everything else is checked regardless.
+// The stack test creates a real Neon project, so it only runs where Neon credentials are set.
 test(
   "a project generated with a Neon database installs and passes its own checks",
   () => {

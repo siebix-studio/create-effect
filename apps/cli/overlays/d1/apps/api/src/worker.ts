@@ -13,7 +13,6 @@ export default class Api extends Cloudflare.Worker<Api>()(
     compatibility: { date: "2026-08-25" },
   },
   Effect.gen(function* () {
-    // Binding the database is also what puts it in the stack.
     const d1 = yield* Cloudflare.D1.QueryDatabase(Database);
 
     return {

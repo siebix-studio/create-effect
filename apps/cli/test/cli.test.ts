@@ -984,7 +984,6 @@ describe("databases", () => {
       });
       assert.include(root.devDependencies, {
         "@alchemy.run/neon": "catalog:",
-        // Alchemy applies the migrations with `pg`; the Worker's own driver does not use it.
         pg: "catalog:",
         vitest: "catalog:",
       });

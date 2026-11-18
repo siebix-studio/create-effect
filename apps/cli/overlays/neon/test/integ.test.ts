@@ -13,8 +13,7 @@ const { test, beforeAll, afterAll, deploy, destroy } = Test.make({
 
 const MINUTES = 60_000;
 
-// The Worker and the website run on this machine, but the database is a real Neon project, created
-// here and deleted afterwards. That needs Neon credentials and takes a while.
+// Creating and deleting a real Neon project takes longer than the default timeout.
 const stack = beforeAll(deploy(Stack), { timeout: 4 * MINUTES });
 
 afterAll(destroy(Stack), { timeout: 3 * MINUTES });
@@ -29,7 +28,6 @@ test(
     expect(response.status).toBe(200);
     expect(yield* response.json).toStrictEqual({ message: "Hello, Ada!" });
 
-    // Read back from the Neon database, which the migration in `migrations/` set up.
     const recent = yield* HttpClient.get(`${api}/greetings`);
 
     expect(recent.status).toBe(200);

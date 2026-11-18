@@ -14,7 +14,6 @@ export default class Api extends Cloudflare.Worker<Api>()(
     compatibility: { date: "2026-08-25", flags: ["nodejs_compat"] },
   },
   Effect.gen(function* () {
-    // Binding the connection is also what puts it, and the Neon project behind it, in the stack.
     const hyperdrive = yield* Cloudflare.Hyperdrive.Connect(Hyperdrive);
 
     return {

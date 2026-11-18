@@ -7,7 +7,6 @@ import { HttpApiBuilder } from "effect/http-api";
 import { GreetingsLive } from "./handlers.ts";
 import * as GreetingRepo from "./repos/greeting.ts";
 
-// Still needs a `SqlClient`. The Worker provides it, because the database is one of its bindings.
 export const HttpLive = HttpApiBuilder.layer(Api).pipe(
   Layer.provide(GreetingsLive),
   Layer.provide(GreetingRepo.layer),
