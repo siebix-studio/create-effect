@@ -59,6 +59,20 @@ bunx @siebix/create-effect add github-actions
 
 Every project has a `create-effect.json` that records which features it has, so `add` tells you when there is nothing left to add. It writes the same files the flag would have, merges what it needs into `package.json` and the README, and runs `bun install` (`--no-install` to skip). A file you have changed since the project was created is left as it is, and you are pointed to what it would have become. `--directory` names a project somewhere else.
 
+## Telemetry
+
+Each run that creates a project, or adds a feature to one, is counted. The count is shown on the [website](https://effect.siebix.com), and it says which options are worth the work.
+
+A run reports this and nothing else:
+
+- whether it was `create` or `add`, and which features were chosen
+- whether dependencies were installed, whether git was initialized, and whether a question was answered at the prompt
+- the version of the CLI and the operating system (`darwin`, `linux`, `win32`)
+
+It never reports the project's name, a path, or anything that identifies you, and the API that receives it stores no IP address. A run does not wait for it, and works the same when the API cannot be reached.
+
+`DO_NOT_TRACK=1` turns it off, and so does `CREATE_EFFECT_TELEMETRY=0`. Nothing is reported from CI.
+
 ## Links
 
 - Website: [effect.siebix.com](https://effect.siebix.com)

@@ -43,8 +43,8 @@
     "dev": "alchemy dev",
     "deploy": "alchemy deploy",
     "destroy": "alchemy destroy",
-    "cli": "bun apps/cli/src/bin.ts",
-    "test": "bun --filter './apps/*' test",
+    "cli": "DO_NOT_TRACK=1 bun apps/cli/src/bin.ts",
+    "test": "bun --filter './apps/*' test && vitest run",
     "typecheck": "tsc --noEmit && bun --filter './apps/*' typecheck",
     "check": "ultracite check",
     "fix": "ultracite fix",
@@ -57,9 +57,13 @@
     "@alchemy.run/cloudflare": "catalog:",
     "@alchemy.run/frontend-frameworks": "catalog:",
     "@alchemy.run/github": "catalog:",
+    "@alchemy.run/test": "catalog:",
     "@changesets/changelog-github": "1.0.1",
     "@changesets/cli": "3.0.3",
+    "@effect/platform-bun": "catalog:",
+    "@effect/platform-node": "catalog:",
     "@effect/tsgo": "0.70.0",
+    "@effect/vitest": "catalog:",
     "@foldkit/oxlint-plugin": "catalog:",
     "@types/bun": "latest",
     "alchemy": "catalog:",
@@ -69,6 +73,7 @@
     "oxlint": "1.94.0",
     "oxlint-tsgolint": "7.0.2007",
     "typescript": "7.0.2",
-    "ultracite": "8.2.1"
+    "ultracite": "8.2.1",
+    "vitest": "catalog:"
   }
 }

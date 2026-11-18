@@ -3,6 +3,8 @@ import * as Command from "effect/cli/Command";
 import * as Flag from "effect/cli/Flag";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
+import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
@@ -13,6 +15,7 @@ import * as Git from "./git.ts";
 import * as PackageManager from "./package-manager.ts";
 import * as ProjectRecord from "./project-record.ts";
 import * as Project from "./project.ts";
+import * as Telemetry from "./telemetry.ts";
 import * as Template from "./template.ts";
 
 const FIRST_COMMIT_MESSAGE = "Initial commit from create-effect";
@@ -71,6 +74,12 @@ const yes = Flag.Boolean("yes").pipe(
 
 const done = (message: string) => Console.log(`✔ ${message}`);
 
+const TELEMETRY_NOTICE = [
+  "",
+  "This run was counted anonymously: the options chosen, never a name or a path.",
+  "DO_NOT_TRACK=1 turns that off.",
+].join("\n");
+
 const optionalStep = <E, R>(
   step: Effect.Effect<void, E, R>,
   options: {
@@ -90,6 +99,7 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
   const path = yield* Path.Path;
   const repository = yield* Git.Service;
   const packageManager = yield* PackageManager.Service;
+  const telemetry = yield* Telemetry.Service;
 
   const answers = yield* Answers.resolve(input);
   const { project } = answers;
@@ -109,6 +119,19 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
     features: overlays,
   });
   yield* done(`Created ${project.name} in ${project.directory}`);
+
+  // Runs beside the steps below.
+  const reported = yield* Effect.forkChild(
+    telemetry.record({
+      command: "create",
+      features: overlays,
+      install: answers.install,
+      git: answers.git,
+      interactive: answers.prompted,
+      cliVersion: PackageJson.version,
+      platform: process.platform,
+    })
+  );
 
   // The repository exists before the install and the commit comes after it, so the first commit
   // includes the lockfile.
@@ -169,6 +192,12 @@ const create = Effect.fn("Cli.create")(function* (input: Answers.Input) {
       ].join("\n")
     );
   }
+
+  yield* Fiber.join(reported);
+
+  if (telemetry.enabled) {
+    yield* Console.log(TELEMETRY_NOTICE);
+  }
 });
 
 const overlay = Argument.Literals("feature", Template.OVERLAYS).pipe(
@@ -198,6 +227,7 @@ const add = Effect.fn("Cli.add")(function* (input: {
 }) {
   const path = yield* Path.Path;
   const packageManager = yield* PackageManager.Service;
+  const telemetry = yield* Telemetry.Service;
 
   const project = yield* Project.fromExisting(path.resolve(input.directory));
 
@@ -223,6 +253,16 @@ const add = Effect.fn("Cli.add")(function* (input: {
   });
 
   yield* done(`Added ${input.overlay} to ${project.name}`);
+
+  const reported = yield* Effect.forkChild(
+    telemetry.record({
+      command: "add",
+      features: [input.overlay],
+      install: input.install,
+      cliVersion: PackageJson.version,
+      platform: process.platform,
+    })
+  );
 
   // A file the project's owner changed is theirs. They are shown what it would have become.
   yield* Effect.forEach(
@@ -250,6 +290,12 @@ const add = Effect.fn("Cli.add")(function* (input: {
       ...OVERLAY_NEXT_STEPS[input.overlay],
     ].join("\n")
   );
+
+  yield* Fiber.join(reported);
+
+  if (telemetry.enabled) {
+    yield* Console.log(TELEMETRY_NOTICE);
+  }
 });
 
 const addCommand = Command.make("add", {
@@ -270,7 +316,8 @@ const addCommand = Command.make("add", {
 );
 
 /**
- * The command without its services, so tests can stand in for git and the package manager.
+ * The command without its services, so tests can stand in for git, the package manager and
+ * telemetry.
  *
  * Like every `create-*` package, `bunx @siebix/create-effect my-app` passes the project name
  * straight to the binary, so the root command takes it instead of a `new` subcommand.
@@ -310,5 +357,11 @@ export const command = Command.make("create-effect", {
 );
 
 export const cli = command.pipe(
-  Command.provide(Layer.mergeAll(Git.layer, PackageManager.layer))
+  Command.provide(
+    Layer.mergeAll(
+      Git.layer,
+      PackageManager.layer,
+      Telemetry.layer.pipe(Layer.provide(FetchHttpClient.layer))
+    )
+  )
 );
