@@ -237,6 +237,8 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
 const SESSION = [
   "? Project name (my-app) › shop",
   "? Add a database? › D1",
+  "? Add sign-in with better-auth? › yes",
+  "? Domain to serve prod from (none: workers.dev) › shop.example.com",
   "? Install dependencies with bun? › yes",
   "? Initialize a git repository? › yes",
   "? Add a GitHub Actions workflow that deploys it? › no",
@@ -273,6 +275,11 @@ const FEATURES: ReadonlyArray<Feature> = [
       "D1 or Neon Postgres, with a migration, a repository written in Effect SQL and tests that cover it. Or none at all.",
   },
   {
+    title: "Sign-in if you want it",
+    description:
+      "With D1, better-auth runs in the API: email and password, an endpoint only a signed-in user can call, and an account section on the website.",
+  },
+  {
     title: "The whole stack on your machine",
     description:
       "bun run dev and bun run test start the API, the website and a D1 database locally. Neither needs a Cloudflare account.",
@@ -280,7 +287,7 @@ const FEATURES: ReadonlyArray<Feature> = [
   {
     title: "Deployed with Alchemy",
     description:
-      "One stack file deploys both to Cloudflare, and every stage is its own copy.",
+      "One stack file deploys both to Cloudflare, and every stage is its own copy. Name a domain, and prod serves the website from it with the API at /api.",
   },
   {
     title: "A deploy workflow when you want one",
@@ -304,7 +311,7 @@ const FEATURES: ReadonlyArray<Feature> = [
   },
 ];
 
-const ROADMAP: ReadonlyArray<string> = ["Sign-in with better-auth"];
+const ROADMAP: ReadonlyArray<string> = ["Sign-in with a Neon database"];
 
 const COUNT_FORMAT = new Intl.NumberFormat("en");
 
@@ -361,7 +368,7 @@ const sessionView = (h: HtmlBuilder<Message>): Html =>
   h.section(
     [h.Class("grid gap-6")],
     [
-      h.h2([h.Class(SECTION_HEADING_CLASS)], ["Five questions"]),
+      h.h2([h.Class(SECTION_HEADING_CLASS)], ["Seven questions at most"]),
       h.p(
         [h.Class("max-w-xl text-pretty text-neutral-600")],
         [
@@ -414,6 +421,7 @@ const FEATURE_LABELS: Readonly<Record<string, string>> = {
   "github-actions": "Added the deploy workflow",
   d1: "Added a D1 database",
   neon: "Added a Neon Postgres database",
+  "better-auth": "Added sign-in with better-auth",
 };
 
 const PLATFORM_NAMES: Readonly<Record<string, string>> = {

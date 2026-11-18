@@ -17,11 +17,17 @@ The project it creates is a Bun workspace:
 
 With a database, the API also gets a migration, a repository written in Effect SQL and an endpoint that reads back what it stored. D1 runs on your machine with the rest; Neon is a real Neon project, also in development.
 
-Run without arguments, it asks for the project name, which database to add, whether to install dependencies, whether to initialize git and whether to add a deploy workflow. Each question has a flag, and a flag skips its question:
+With D1, it can add sign-in too: [better-auth](https://better-auth.com) in the API Worker, with email and password, a protected endpoint and an account section on the website.
+
+Every stage is served from workers.dev. Given a domain, the `prod` stage serves the website from it and the API from `/api` on the same origin.
+
+Run without arguments, it asks for the project name, which database to add, whether to add sign-in (when the database is D1), which domain to serve `prod` from, whether to install dependencies, whether to initialize git and whether to add a deploy workflow. Each question has a flag, and a flag skips its question:
 
 | Flag | What |
 | --- | --- |
 | `--database d1\|neon\|none` | Add a D1 database, a Neon Postgres database, or none (the default) |
+| `--better-auth`, `--no-better-auth` | Add sign-in with better-auth, or don't. It keeps its users in the D1 database, so it needs `--database d1` |
+| `--domain example.com\|none` | Serve the `prod` stage from a domain on your Cloudflare account, with the API at `/api`, or stay on workers.dev (the default) |
 | `--install`, `--no-install` | Run `bun install`, or don't |
 | `--git`, `--no-git` | Create a git repository with a first commit, or don't |
 | `--github-actions`, `--no-github-actions` | Add a GitHub Actions workflow that deploys `main` and previews each pull request, or don't |
@@ -30,7 +36,7 @@ Run without arguments, it asks for the project name, which database to add, whet
 
 Where nothing can be asked (CI, a pipe) the defaults apply, and the name has to be given.
 
-`bunx @siebix/create-effect add github-actions`, run inside a project created earlier, adds what `--github-actions` would have written, and `add d1` or `add neon` adds a database to a project that has none. It leaves files that were changed since as they are.
+`bunx @siebix/create-effect add github-actions`, run inside a project created earlier, adds what `--github-actions` would have written, `add d1` or `add neon` adds a database to a project that has none, and `add better-auth` adds sign-in to one that has D1. It leaves files that were changed since as they are.
 
 ## Telemetry
 

@@ -36,13 +36,25 @@ const create = (name: string, flags: readonly string[]) => {
   return project;
 };
 
-// Each overlay replaces files of the template, so each shape of the project is checked, and two
+// Each overlay replaces files of the template, so each shape of the project is checked, and
 // overlays together.
 test.each([
   { name: "my-app", flags: [] },
   { name: "my-ci-app", flags: ["--github-actions"] },
   { name: "my-d1-app", flags: ["--database", "d1"] },
   { name: "my-ci-d1-app", flags: ["--database", "d1", "--github-actions"] },
+  // Sign-in replaces files of the database it builds on.
+  {
+    name: "my-auth-app",
+    flags: [
+      "--database",
+      "d1",
+      "--better-auth",
+      "--github-actions",
+      "--domain",
+      "example.com",
+    ],
+  },
 ])(
   "a project generated with $flags installs and passes its own checks",
   ({ name, flags }) => {

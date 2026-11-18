@@ -10,6 +10,7 @@ A full-stack Effect app on Cloudflare, deployed with [Alchemy](https://alchemy.r
 | `apps/api` | The Effect HTTP API, a Cloudflare Worker |
 | `apps/web` | The website, a prerendered [Foldkit](https://foldkit.dev) app |
 | `alchemy.run.ts` | The stack that deploys both |
+| `domain.ts` | The domain `prod` is served from, if it has one |
 
 `create-effect.json` records what was generated. Keep it: `bunx @siebix/create-effect add <feature>` reads it to add a deploy workflow (`github-actions`) or a database (`d1`, `neon`) later.
 
@@ -51,6 +52,32 @@ bun run destroy
 ```
 
 Each stage is its own copy of the stack: `bun run deploy --stage prod`. The first deploy also creates this project's state store on your account, a Worker named `{{name}}-state`, which is where Alchemy remembers what it deployed.
+
+## Domain
+
+Every stage is served from `workers.dev`, where the website and the API each have an address of their own. `domain.ts` can name a domain for the `prod` stage:
+
+```ts
+const DOMAIN = "example.com";
+```
+
+`bun run deploy --stage prod` then serves the website from that hostname and the API from `/api` on it, so the two share one origin. Every other stage, and `bun run dev`, stays as it is.
+
+The hostname has to be on a zone of the Cloudflare account you deploy to: add the domain to Cloudflare first. Alchemy looks the zone up by name, creates the DNS record and attaches the certificate. A subdomain works too (`app.example.com`).
+
+If the project has the deploy workflow, its token has to be allowed to do the same. Add a second policy to `policies` in `stacks/github.ts`, and deploy that stack again:
+
+```ts
+{
+  effect: "allow",
+  permissionGroups: ["Zone Read", "Workers Routes Write"],
+  resources: {
+    [`com.cloudflare.api.account.${accountId}`]: {
+      "com.cloudflare.api.account.zone.*": "*",
+    },
+  },
+},
+```
 
 ## Observability
 

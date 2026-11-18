@@ -6,13 +6,14 @@
 - `apps/api`: the Effect HTTP API, a Cloudflare Worker that implements the contract.
 - `apps/web`: the website, a prerendered (SSG) Foldkit app that calls the API through a typed client derived from the contract.
 - `create-effect.json`: what create-effect wrote into the project. `bunx @siebix/create-effect add <feature>` reads and updates it; don't edit it by hand.
-- Root: the Alchemy stack (`alchemy.run.ts`), the providers its resources come from (`providers.ts`), a test that runs the whole stack locally (`test/integ.test.ts`), the shared lint, format and TypeScript config, a lefthook pre-commit hook (`lefthook.yml`) that runs `ultracite fix` on staged files, and `.mcp.json`, which gives agents the Foldkit DevTools.
+- Root: the Alchemy stack (`alchemy.run.ts`), the providers its resources come from (`providers.ts`), the domain `prod` is served from (`domain.ts`), a test that runs the whole stack locally (`test/integ.test.ts`), the shared lint, format and TypeScript config, a lefthook pre-commit hook (`lefthook.yml`) that runs `ultracite fix` on staged files, and `.mcp.json`, which gives agents the Foldkit DevTools.
 
 Commands, from the root: `bun run dev` (`alchemy dev`), `bun run check` (lint and format), `bun run fix`, `bun run typecheck`, `bun run test`, `bun run deploy`.
 
 # Conventions
 
 - A new endpoint starts in `packages/domain/src/api.ts`, which holds the contract and no logic. It then gets a handler in `apps/api/src/handlers.ts`; errors a handler can fail with are declared on the endpoint. The website calls it through `HttpApiClient`; never write a URL by hand.
+- Every path of the API starts with `/api` (the prefix on the contract). On workers.dev and under `bun run dev` the API is an origin of its own and the website is built with its address (`VITE_API_URL`). When `domain.ts` names a domain, `prod` serves the website from it and the API from `/api` on the same origin, through a route on the API Worker, and `VITE_API_URL` is unset there.
 - `bun run dev` and `bun run test` run locally and keep their state in `.alchemy/`; only deployed stages touch Cloudflare.
 - The website follows Foldkit's Elm-style architecture: a Schema `Model`, past-tense `Message`s, a pure `update` and `view`, side effects only in `Command`s.
 - Effect is v4. HTTP modules live under `effect/http` and `effect/http-api`.

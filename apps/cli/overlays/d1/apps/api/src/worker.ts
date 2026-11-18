@@ -1,17 +1,24 @@
 import * as Cloudflare from "@alchemy.run/cloudflare";
 import * as SQL from "@alchemy.run/cloudflare/D1/SQL";
+import * as Alchemy from "alchemy";
 import { Effect, Layer } from "effect";
 import { HttpRouter } from "effect/http";
 
+import { apiRoutes } from "../../../domain.ts";
 import { Database } from "./database.ts";
 import { HttpLive } from "./http.ts";
 
 export default class Api extends Cloudflare.Worker<Api>()(
   "Api",
-  {
-    main: import.meta.url,
-    compatibility: { date: "2026-08-25" },
-  },
+  Effect.gen(function* () {
+    const { stage } = yield* Alchemy.Stack;
+
+    return {
+      main: import.meta.url,
+      compatibility: { date: "2026-08-25" },
+      routes: apiRoutes(stage),
+    };
+  }),
   Effect.gen(function* () {
     const d1 = yield* Cloudflare.D1.QueryDatabase(Database);
 

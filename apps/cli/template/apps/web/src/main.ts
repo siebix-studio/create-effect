@@ -71,6 +71,7 @@ export const FetchGreeting = Command.define("FetchGreeting", {
   messages: [Message.SucceededFetchGreeting, Message.FailedFetchGreeting],
   execute: ({ name }) =>
     Effect.gen(function* () {
+      // Unset where the API is at /api of the website's own origin.
       const client = yield* HttpApiClient.make(Api, {
         baseUrl: import.meta.env.VITE_API_URL,
       });

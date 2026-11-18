@@ -20,7 +20,7 @@ test(
   Effect.gen(function* () {
     const { api } = yield* stack;
 
-    const response = yield* HttpClient.get(`${api}/greetings/Ada`);
+    const response = yield* HttpClient.get(`${api}/api/greetings/Ada`);
 
     expect(response.status).toBe(200);
     expect(yield* response.json).toStrictEqual({ message: "Hello, Ada!" });

@@ -3,17 +3,20 @@ import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 
 import { Greeting } from "./greeting.ts";
 
-export const Api = HttpApi.make("api").add(
-  HttpApiGroup.make("greetings")
-    .add(
-      HttpApiEndpoint.get("greet", "/greetings/:name", {
-        params: { name: Schema.String },
-        success: Greeting,
-      })
-    )
-    .add(
-      HttpApiEndpoint.get("listRecent", "/greetings", {
-        success: Schema.Array(Greeting),
-      })
-    )
-);
+// Every path starts with /api, so the API can share an origin with the website.
+export const Api = HttpApi.make("api")
+  .add(
+    HttpApiGroup.make("greetings")
+      .add(
+        HttpApiEndpoint.get("greet", "/greetings/:name", {
+          params: { name: Schema.String },
+          success: Greeting,
+        })
+      )
+      .add(
+        HttpApiEndpoint.get("listRecent", "/greetings", {
+          success: Schema.Array(Greeting),
+        })
+      )
+  )
+  .prefix("/api");
