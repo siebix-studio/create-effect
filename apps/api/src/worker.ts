@@ -72,7 +72,6 @@ export default class Api extends Cloudflare.Worker<Api>()(
           return yield* usage.getByName(EVERYTHING).record(payload);
         }),
         stats: Effect.fn("Api.stats")(function* () {
-          // Only an answer is cached. A failure would otherwise be served for the whole minute.
           yield* HttpEffect.appendPreResponseHandler((_request, response) =>
             Effect.succeed(
               response.status === OK
