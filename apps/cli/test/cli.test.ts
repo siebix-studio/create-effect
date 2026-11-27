@@ -979,8 +979,8 @@ describe("databases", () => {
       const root = yield* readPackageJson(path.join(directory, "package.json"));
       assert.strictEqual(root.name, "my-app");
       assert.include(root.workspaces?.catalog, {
-        effect: "^4.1.4",
-        pg: "^8.22.0",
+        effect: "^4.1.7",
+        pg: "^8.23.1",
       });
       assert.include(root.devDependencies, {
         "@alchemy.run/neon": "catalog:",
